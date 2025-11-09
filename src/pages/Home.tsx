@@ -1,3 +1,45 @@
+import { Link } from 'react-router-dom';
+
+const chapters = [
+  {
+    id: 1,
+    title: '第一章：確率と割合の境界線',
+    path: '/chapter1',
+    description: '漫画家になれる確率と漫画家の割合——この二つの違いを理解する',
+  },
+  {
+    id: 2,
+    title: '第二章：祈りは確率を変えない',
+    path: '/chapter2',
+    description: '宝くじシミュレーターで、祈りが確率に影響しないことを証明',
+  },
+  {
+    id: 3,
+    title: '第三章：進化のトーナメント',
+    path: '/chapter3',
+    description: 'トーナメント型と自然淘汰の違い。全滅もあり得る自然の厳しさ',
+  },
+  {
+    id: 4,
+    title: '第四章：ガチャの天井と煽り文句',
+    path: '/chapter4',
+    description: '「今なら当たりやすい」の真実。天井の有無で何が変わるか',
+  },
+  {
+    id: 5,
+    title: '第五章：確率の森で迷う',
+    path: '/chapter5',
+    description: '麻雀とじゃんけん。偏りは予測できるのか？流れは存在するのか？',
+  },
+  {
+    id: 6,
+    title: '特別編：チンチロリン',
+    path: '/chinchirorin',
+    description:
+      '3D物理シミュレーションで偏りを検証。カイ二乗検定による統計分析',
+  },
+];
+
 export default function Home() {
   return (
     <div className="space-y-12">
@@ -92,6 +134,30 @@ export default function Home() {
               <span>人間を誤解させる煽り文句の真実を見抜く</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <div className="boundary-line" />
+
+      <section className="space-y-6">
+        <h2 className="text-3xl font-serif text-boundary-silver text-center">
+          調査記録を読む
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {chapters.map(chapter => (
+            <Link
+              key={chapter.id}
+              to={chapter.path}
+              className="simulator-container hover:border-boundary-cyan transition-all duration-300 cursor-pointer group"
+            >
+              <h3 className="text-xl text-boundary-cyan mb-3 group-hover:text-boundary-silver transition-colors">
+                {chapter.title}
+              </h3>
+              <p className="text-boundary-mist text-sm leading-relaxed">
+                {chapter.description}
+              </p>
+            </Link>
+          ))}
         </div>
       </section>
 
