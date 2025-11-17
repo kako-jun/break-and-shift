@@ -66,6 +66,20 @@ const chapters = [
     description:
       '受ける雨粒の数で決まる？嘘だ。雨がいつ止むかで決まる。グラフで比較',
   },
+  {
+    id: 11,
+    title: '特別編：生存者バイアスと地球の突然死',
+    path: '/survivor-bias',
+    description:
+      '太陽の寿命50億年？観測できるのは生き残った恒星だけ。突然死のリスクを暴く',
+  },
+  {
+    id: 12,
+    title: '特別編：前世と先祖の確率詐欺',
+    path: '/ancestor-probability',
+    description:
+      '前世が有名人？先祖が桓武天皇？確率で計算すれば詐欺だとわかる',
+  },
 ];
 
 export default function Home() {
