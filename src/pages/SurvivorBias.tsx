@@ -67,7 +67,7 @@ export default function SurvivorBias() {
             「その根拠は、周りの恒星の観測データだ。」
           </p>
           <p className="monologue">
-            「理想状態ではそうだね。でも、現実は理想世界じゃないんだ。」
+            「理想状態ではそうだね。でも、世界は理想じゃないんだ。」
           </p>
           <p className="monologue">
             「観測できるのは『生き残っている恒星』だけ。突然死した星は、データに残らない。」

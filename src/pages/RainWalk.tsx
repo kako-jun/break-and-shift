@@ -90,7 +90,7 @@ export default function RainWalk() {
             「理由は『受ける雨粒の数が少ないから』だと。」
           </p>
           <p className="monologue">
-            「理想状態ではそうだね。でも、現実は理想世界じゃないんだ。」
+            「理想状態ではそうだね。でも、世界は理想じゃないんだ。」
           </p>
           <p className="monologue">
             「真実は、その雨がすぐ止むか、降り続けるかによる。」

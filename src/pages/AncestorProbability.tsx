@@ -77,7 +77,7 @@ export default function AncestorProbability() {
             「人は喜ぶ。自分が特別だと思いたいから。」
           </p>
           <p className="monologue">
-            「理想状態ではそうだね。でも、現実は理想世界じゃないんだ。」
+            「理想状態ではそうだね。でも、世界は理想じゃないんだ。」
           </p>
           <p className="monologue text-boundary-cyan">
             「確率を計算すれば、それが詐欺だとわかる。」
