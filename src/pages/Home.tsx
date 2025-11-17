@@ -45,6 +45,20 @@ const chapters = [
     description:
       '500円で取れる設定でも1回目では取れない。失敗するたびに握力が上がる仕組みを暴く',
   },
+  {
+    id: 8,
+    title: '特別編：スロットの演出詐欺',
+    path: '/slot-machine',
+    description:
+      'リーチ演出で期待が高まる。だが結果はレバーを引いた瞬間に決まっている',
+  },
+  {
+    id: 9,
+    title: '特別編：じゃんけんの後出し必勝法',
+    path: '/janken',
+    description:
+      '人間が認識できない速度での後出し。じゃんけんの確率は本当に1/3なのか？',
+  },
 ];
 
 export default function Home() {
