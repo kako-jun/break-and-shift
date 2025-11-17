@@ -38,6 +38,48 @@ const chapters = [
     description:
       '3D物理シミュレーションで偏りを検証。カイ二乗検定による統計分析',
   },
+  {
+    id: 7,
+    title: '特別編：クレーンゲームの期待値操作',
+    path: '/claw-machine',
+    description:
+      '500円で取れる設定でも1回目では取れない。失敗するたびに握力が上がる仕組みを暴く',
+  },
+  {
+    id: 8,
+    title: '特別編：スロットの演出詐欺',
+    path: '/slot-machine',
+    description:
+      'リーチ演出で期待が高まる。だが結果はレバーを引いた瞬間に決まっている',
+  },
+  {
+    id: 9,
+    title: '特別編：じゃんけんの後出し必勝法',
+    path: '/janken',
+    description:
+      '人間が認識できない速度での後出し。じゃんけんの確率は本当に1/3なのか？',
+  },
+  {
+    id: 10,
+    title: '特別編：雨の中は走るべきか、歩くべきか',
+    path: '/rain-walk',
+    description:
+      '受ける雨粒の数で決まる？嘘だ。雨がいつ止むかで決まる。グラフで比較',
+  },
+  {
+    id: 11,
+    title: '特別編：生存者バイアスと地球の突然死',
+    path: '/survivor-bias',
+    description:
+      '太陽の寿命50億年？観測できるのは生き残った恒星だけ。突然死のリスクを暴く',
+  },
+  {
+    id: 12,
+    title: '特別編：前世と先祖の確率詐欺',
+    path: '/ancestor-probability',
+    description:
+      '前世が有名人？先祖が桓武天皇？確率で計算すれば詐欺だとわかる',
+  },
 ];
 
 export default function Home() {
