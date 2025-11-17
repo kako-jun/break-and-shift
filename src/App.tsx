@@ -8,6 +8,8 @@ import Chapter4 from './pages/Chapter4';
 import Chapter5 from './pages/Chapter5';
 import Chinchirorin from './pages/Chinchirorin';
 import ClawMachine from './pages/ClawMachine';
+import SlotMachine from './pages/SlotMachine';
+import Janken from './pages/Janken';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
         <Route path="/chapter5" element={<Chapter5 />} />
         <Route path="/chinchirorin" element={<Chinchirorin />} />
         <Route path="/claw-machine" element={<ClawMachine />} />
+        <Route path="/slot-machine" element={<SlotMachine />} />
+        <Route path="/janken" element={<Janken />} />
       </Routes>
     </Layout>
   );
