@@ -11,6 +11,8 @@ import ClawMachine from './pages/ClawMachine';
 import SlotMachine from './pages/SlotMachine';
 import Janken from './pages/Janken';
 import RainWalk from './pages/RainWalk';
+import SurvivorBias from './pages/SurvivorBias';
+import AncestorProbability from './pages/AncestorProbability';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
         <Route path="/slot-machine" element={<SlotMachine />} />
         <Route path="/janken" element={<Janken />} />
         <Route path="/rain-walk" element={<RainWalk />} />
+        <Route path="/survivor-bias" element={<SurvivorBias />} />
+        <Route path="/ancestor-probability" element={<AncestorProbability />} />
       </Routes>
     </Layout>
   );
