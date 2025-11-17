@@ -38,6 +38,13 @@ const chapters = [
     description:
       '3D物理シミュレーションで偏りを検証。カイ二乗検定による統計分析',
   },
+  {
+    id: 7,
+    title: '特別編：クレーンゲームの期待値操作',
+    path: '/claw-machine',
+    description:
+      '500円で取れる設定でも1回目では取れない。失敗するたびに握力が上がる仕組みを暴く',
+  },
 ];
 
 export default function Home() {

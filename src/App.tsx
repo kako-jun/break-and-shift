@@ -7,6 +7,7 @@ import Chapter3 from './pages/Chapter3';
 import Chapter4 from './pages/Chapter4';
 import Chapter5 from './pages/Chapter5';
 import Chinchirorin from './pages/Chinchirorin';
+import ClawMachine from './pages/ClawMachine';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/chapter4" element={<Chapter4 />} />
         <Route path="/chapter5" element={<Chapter5 />} />
         <Route path="/chinchirorin" element={<Chinchirorin />} />
+        <Route path="/claw-machine" element={<ClawMachine />} />
       </Routes>
     </Layout>
   );
