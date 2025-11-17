@@ -7,6 +7,12 @@ import Chapter3 from './pages/Chapter3';
 import Chapter4 from './pages/Chapter4';
 import Chapter5 from './pages/Chapter5';
 import Chinchirorin from './pages/Chinchirorin';
+import ClawMachine from './pages/ClawMachine';
+import SlotMachine from './pages/SlotMachine';
+import Janken from './pages/Janken';
+import RainWalk from './pages/RainWalk';
+import SurvivorBias from './pages/SurvivorBias';
+import AncestorProbability from './pages/AncestorProbability';
 
 function App() {
   return (
@@ -19,6 +25,12 @@ function App() {
         <Route path="/chapter4" element={<Chapter4 />} />
         <Route path="/chapter5" element={<Chapter5 />} />
         <Route path="/chinchirorin" element={<Chinchirorin />} />
+        <Route path="/claw-machine" element={<ClawMachine />} />
+        <Route path="/slot-machine" element={<SlotMachine />} />
+        <Route path="/janken" element={<Janken />} />
+        <Route path="/rain-walk" element={<RainWalk />} />
+        <Route path="/survivor-bias" element={<SurvivorBias />} />
+        <Route path="/ancestor-probability" element={<AncestorProbability />} />
       </Routes>
     </Layout>
   );
