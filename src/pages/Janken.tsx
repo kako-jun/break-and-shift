@@ -308,7 +308,7 @@ export default function Janken() {
             「じゃんけんの確率は、理想状態では1/3ずつだ。」
           </p>
           <p className="monologue">
-            「でも、現実は理想世界じゃないんだ。」
+            「理想状態ではそうだね。でも、世界は理想じゃないんだ。」
           </p>
           <p className="monologue">
             「人間には心理的バイアスがある。初手はグーが多い。」
@@ -514,7 +514,7 @@ export default function Janken() {
               「じゃんけんの確率は1/3——理想状態ではそうだね。」
             </p>
             <p className="monologue">
-              「でも、現実は理想世界じゃないんだ。」
+              「でも、世界は理想じゃないんだ。」
             </p>
             <p className="monologue text-boundary-cyan">
               「人間には心理的バイアスがある。完全にランダムには選べない。」
