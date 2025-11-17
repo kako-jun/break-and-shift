@@ -59,6 +59,13 @@ const chapters = [
     description:
       '人間が認識できない速度での後出し。じゃんけんの確率は本当に1/3なのか？',
   },
+  {
+    id: 10,
+    title: '特別編：雨の中は走るべきか、歩くべきか',
+    path: '/rain-walk',
+    description:
+      '受ける雨粒の数で決まる？嘘だ。雨がいつ止むかで決まる。グラフで比較',
+  },
 ];
 
 export default function Home() {

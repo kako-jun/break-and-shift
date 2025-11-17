@@ -10,6 +10,7 @@ import Chinchirorin from './pages/Chinchirorin';
 import ClawMachine from './pages/ClawMachine';
 import SlotMachine from './pages/SlotMachine';
 import Janken from './pages/Janken';
+import RainWalk from './pages/RainWalk';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
         <Route path="/claw-machine" element={<ClawMachine />} />
         <Route path="/slot-machine" element={<SlotMachine />} />
         <Route path="/janken" element={<Janken />} />
+        <Route path="/rain-walk" element={<RainWalk />} />
       </Routes>
     </Layout>
   );
