@@ -41,7 +41,12 @@ export default function ClawMachine() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const drawMachine = (armX: number, armY: number, isGripping: boolean, hasPrize: boolean) => {
+    const drawMachine = (
+      armX: number,
+      armY: number,
+      isGripping: boolean,
+      hasPrize: boolean
+    ) => {
       // クリア
       ctx.fillStyle = '#0a1929';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -155,7 +160,12 @@ export default function ClawMachine() {
     let isGripping = false;
     let hasPrize = false;
 
-    const drawMachine = (x: number, y: number, grip: boolean, prize: boolean) => {
+    const drawMachine = (
+      x: number,
+      y: number,
+      grip: boolean,
+      prize: boolean
+    ) => {
       ctx.fillStyle = '#0a1929';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -281,12 +291,28 @@ export default function ClawMachine() {
     await new Promise(r => setTimeout(r, 300));
 
     // 上昇
-    await animate(centerX, centerX, canvas.height - 150, 100, 800, true, hasPrize);
+    await animate(
+      centerX,
+      centerX,
+      canvas.height - 150,
+      100,
+      800,
+      true,
+      hasPrize
+    );
 
     if (success) {
       // 取り出し口へ移動
       await animate(centerX, canvas.width - 50, 100, 100, 600, true, true);
-      await animate(canvas.width - 50, canvas.width - 50, 100, canvas.height - 80, 400, false, false);
+      await animate(
+        canvas.width - 50,
+        canvas.width - 50,
+        100,
+        canvas.height - 80,
+        400,
+        false,
+        false
+      );
       setPrizeCount(prev => prev + 1);
     } else {
       // 途中で落とす
@@ -325,16 +351,15 @@ export default function ClawMachine() {
     }
   };
 
-  const successRate = currentAttempt > 0 ? (prizeCount / currentAttempt) * 100 : 0;
+  const successRate =
+    currentAttempt > 0 ? (prizeCount / currentAttempt) * 100 : 0;
   const actualExpectedValue = prizeCount > 0 ? totalCost / prizeCount : 0;
 
   return (
     <div className="space-y-12">
       <header>
         <h1 className="chapter-title">クレーンゲームの期待値操作</h1>
-        <p className="text-boundary-cyan text-lg">
-          Claw Machine Rigged System
-        </p>
+        <p className="text-boundary-cyan text-lg">Claw Machine Rigged System</p>
       </header>
 
       <div className="boundary-line" />
@@ -477,28 +502,31 @@ export default function ClawMachine() {
             <div className="mt-6 space-y-2">
               <h3 className="text-boundary-cyan">プレイ履歴（直近20回）</h3>
               <div className="max-h-60 overflow-y-auto space-y-1">
-                {results.slice(-20).reverse().map((result, i) => (
-                  <div
-                    key={result.attempt}
-                    className={`p-3 rounded flex justify-between items-center ${
-                      result.success
-                        ? 'bg-green-900/20 border border-green-400'
-                        : 'bg-red-900/20 border border-red-400'
-                    }`}
-                  >
-                    <span className="text-boundary-mist">
-                      {result.attempt}回目
-                    </span>
-                    <span className="text-sm text-boundary-mist">
-                      握力: {result.gripStrength.toFixed(1)}%
-                    </span>
-                    <span
-                      className={`font-bold ${result.success ? 'text-green-400' : 'text-red-400'}`}
+                {results
+                  .slice(-20)
+                  .reverse()
+                  .map(result => (
+                    <div
+                      key={result.attempt}
+                      className={`p-3 rounded flex justify-between items-center ${
+                        result.success
+                          ? 'bg-green-900/20 border border-green-400'
+                          : 'bg-red-900/20 border border-red-400'
+                      }`}
                     >
-                      {result.success ? '✓ 成功' : '✗ 失敗'}
-                    </span>
-                  </div>
-                ))}
+                      <span className="text-boundary-mist">
+                        {result.attempt}回目
+                      </span>
+                      <span className="text-sm text-boundary-mist">
+                        握力: {result.gripStrength.toFixed(1)}%
+                      </span>
+                      <span
+                        className={`font-bold ${result.success ? 'text-green-400' : 'text-red-400'}`}
+                      >
+                        {result.success ? '✓ 成功' : '✗ 失敗'}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -536,22 +564,15 @@ export default function ClawMachine() {
         </h3>
         <div className="simulator-container">
           <ul className="space-y-2 text-boundary-mist">
-            <li>
-              • 期待値500円 = 100円×5回で1個取れる設定
-            </li>
+            <li>• 期待値500円 = 100円×5回で1個取れる設定</li>
             <li>
               • 握力は失敗回数に応じて線形増加（10% → 32.5% → 55% → 77.5% →
               100%）
             </li>
-            <li>
-              • 1回目で取れる確率は10%、2回目で32.5%...と徐々に上昇
-            </li>
-            <li>
-              • 長期的には設定通りの期待値に収束する
-            </li>
+            <li>• 1回目で取れる確率は10%、2回目で32.5%...と徐々に上昇</li>
+            <li>• 長期的には設定通りの期待値に収束する</li>
             <li className="text-boundary-cyan">
-              •
-              人間は「次こそは取れるかも」と期待してしまうが、実際には計算通り
+              • 人間は「次こそは取れるかも」と期待してしまうが、実際には計算通り
             </li>
           </ul>
         </div>
@@ -563,17 +584,12 @@ export default function ClawMachine() {
         </h3>
         <div className="simulator-container">
           <ul className="space-y-2 text-boundary-mist">
+            <li>• 風営法・景品表示法では「期待値」が規制の対象</li>
+            <li>• 500円で500円相当（または設定額相当）の景品が取れれば合法</li>
+            <li>• 各回の成功確率が異なることは規制されていない</li>
             <li>
-              • 風営法・景品表示法では「期待値」が規制の対象
-            </li>
-            <li>
-              • 500円で500円相当（または設定額相当）の景品が取れれば合法
-            </li>
-            <li>
-              • 各回の成功確率が異なることは規制されていない
-            </li>
-            <li>
-              • 客は「技術介入できる」と思い込んでいるため、ギャンブルと認識されない
+              •
+              客は「技術介入できる」と思い込んでいるため、ギャンブルと認識されない
             </li>
             <li className="text-boundary-cyan">
               • 情報の非対称性——店は知っているが、客は知らない

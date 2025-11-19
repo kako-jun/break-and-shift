@@ -23,8 +23,8 @@ export default function Janken() {
   const [currentRound, setCurrentRound] = useState(0);
   const [delayMs, setDelayMs] = useState(50);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playerHand, setPlayerHand] = useState<Hand | null>(null);
-  const [cpuHand, setCpuHand] = useState<Hand | null>(null);
+  const [, setPlayerHand] = useState<Hand | null>(null);
+  const [, setCpuHand] = useState<Hand | null>(null);
   const [showCpuCheat, setShowCpuCheat] = useState(false);
   const [fairMode, setFairMode] = useState(false);
   const clickTimeRef = useRef<number>(0);
@@ -52,7 +52,11 @@ export default function Janken() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const drawGame = (player: Hand | null, cpu: Hand | null, cheat: string | null) => {
+    const drawGame = (
+      player: Hand | null,
+      cpu: Hand | null,
+      cheat: string | null
+    ) => {
       ctx.fillStyle = '#0a1929';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -199,8 +203,10 @@ export default function Janken() {
     ctx.fillStyle = '#0a1929';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const playerColor = result === '勝ち' ? '#00ff00' : result === '負け' ? '#ff0000' : '#ffff00';
-    const cpuColor = result === '負け' ? '#00ff00' : result === '勝ち' ? '#ff0000' : '#ffff00';
+    const playerColor =
+      result === '勝ち' ? '#00ff00' : result === '負け' ? '#ff0000' : '#ffff00';
+    const cpuColor =
+      result === '負け' ? '#00ff00' : result === '勝ち' ? '#ff0000' : '#ffff00';
 
     ctx.fillStyle = '#1a4a5a';
     ctx.fillRect(20, 150, 180, 180);
@@ -251,8 +257,13 @@ export default function Janken() {
     ctx.fillText('じゃんけん対戦', canvas.width / 2, 40);
 
     ctx.font = 'bold 30px sans-serif';
-    ctx.fillStyle = result === '勝ち' ? '#00ff00' : result === '負け' ? '#ff0000' : '#ffff00';
-    ctx.fillText(result === 'あいこ' ? 'あいこ' : result, canvas.width / 2, 100);
+    ctx.fillStyle =
+      result === '勝ち' ? '#00ff00' : result === '負け' ? '#ff0000' : '#ffff00';
+    ctx.fillText(
+      result === 'あいこ' ? 'あいこ' : result,
+      canvas.width / 2,
+      100
+    );
 
     // 記録
     const newRound = currentRound + 1;
@@ -339,7 +350,9 @@ export default function Janken() {
             />
             <p className="text-sm text-boundary-mist mt-2">
               {delayMs === 0 && '即座に後出し'}
-              {delayMs > 0 && delayMs <= 50 && '人間には認識できない速度（不正）'}
+              {delayMs > 0 &&
+                delayMs <= 50 &&
+                '人間には認識できない速度（不正）'}
               {delayMs > 50 && delayMs <= 100 && 'わずかに遅れを感じる（微妙）'}
               {delayMs > 100 && 'はっきり後出しとわかる'}
             </p>
@@ -368,9 +381,7 @@ export default function Janken() {
                 onChange={e => setShowCpuCheat(e.target.checked)}
                 className="w-5 h-5 accent-boundary-cyan"
               />
-              <span className="text-boundary-mist">
-                不正を可視化する
-              </span>
+              <span className="text-boundary-mist">不正を可視化する</span>
             </label>
           </div>
         </div>
@@ -456,42 +467,45 @@ export default function Janken() {
             <div className="mt-6 space-y-2">
               <h3 className="text-boundary-cyan">対戦履歴（直近10回）</h3>
               <div className="max-h-60 overflow-y-auto space-y-1">
-                {results.slice(-10).reverse().map(result => (
-                  <div
-                    key={result.round}
-                    className={`p-3 rounded ${
-                      result.result === '勝ち'
-                        ? 'bg-green-900/20 border border-green-400'
-                        : result.result === '負け'
-                          ? 'bg-red-900/20 border border-red-400'
-                          : 'bg-yellow-900/20 border border-yellow-400'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="text-boundary-mist">
-                        {result.round}回目
-                      </span>
-                      <span className="text-xl">
-                        {HAND_EMOJI[result.playerHand as Hand]} vs{' '}
-                        {HAND_EMOJI[result.cpuHand as Hand]}
-                      </span>
-                      <span className="text-sm text-boundary-mist">
-                        遅延: {result.delay}ms
-                      </span>
-                      <span
-                        className={`font-bold ${
-                          result.result === '勝ち'
-                            ? 'text-green-400'
-                            : result.result === '負け'
-                              ? 'text-red-400'
-                              : 'text-yellow-400'
-                        }`}
-                      >
-                        {result.result}
-                      </span>
+                {results
+                  .slice(-10)
+                  .reverse()
+                  .map(result => (
+                    <div
+                      key={result.round}
+                      className={`p-3 rounded ${
+                        result.result === '勝ち'
+                          ? 'bg-green-900/20 border border-green-400'
+                          : result.result === '負け'
+                            ? 'bg-red-900/20 border border-red-400'
+                            : 'bg-yellow-900/20 border border-yellow-400'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-boundary-mist">
+                          {result.round}回目
+                        </span>
+                        <span className="text-xl">
+                          {HAND_EMOJI[result.playerHand as Hand]} vs{' '}
+                          {HAND_EMOJI[result.cpuHand as Hand]}
+                        </span>
+                        <span className="text-sm text-boundary-mist">
+                          遅延: {result.delay}ms
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            result.result === '勝ち'
+                              ? 'text-green-400'
+                              : result.result === '負け'
+                                ? 'text-red-400'
+                                : 'text-yellow-400'
+                          }`}
+                        >
+                          {result.result}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}
@@ -513,9 +527,7 @@ export default function Janken() {
             <p className="monologue">
               「じゃんけんの確率は1/3——理想状態ではそうだね。」
             </p>
-            <p className="monologue">
-              「でも、世界は理想じゃないんだ。」
-            </p>
+            <p className="monologue">「でも、世界は理想じゃないんだ。」</p>
             <p className="monologue text-boundary-cyan">
               「人間には心理的バイアスがある。完全にランダムには選べない。」
             </p>
@@ -529,18 +541,13 @@ export default function Janken() {
         </h3>
         <div className="simulator-container">
           <ul className="space-y-2 text-boundary-mist">
+            <li>• 人間の視覚認識の限界：約50〜100ms</li>
+            <li>• 50ms以下の遅延では、同時に出したように見える</li>
             <li>
-              • 人間の視覚認識の限界：約50〜100ms
+              •
+              ゲームセンターのじゃんけんゲームは、この原理を利用している可能性がある
             </li>
-            <li>
-              • 50ms以下の遅延では、同時に出したように見える
-            </li>
-            <li>
-              • ゲームセンターのじゃんけんゲームは、この原理を利用している可能性がある
-            </li>
-            <li>
-              • プログラム上では「後出し」でも、人間には認識できない
-            </li>
+            <li>• プログラム上では「後出し」でも、人間には認識できない</li>
             <li className="text-boundary-cyan">
               • 技術的には不正だが、証明することは困難
             </li>
@@ -555,7 +562,9 @@ export default function Janken() {
         <div className="simulator-container">
           <div className="space-y-4">
             <div>
-              <h4 className="text-boundary-cyan mb-2">実際の出現率（心理学的研究）</h4>
+              <h4 className="text-boundary-cyan mb-2">
+                実際の出現率（心理学的研究）
+              </h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-boundary-dark p-4 rounded">
                   <p className="text-4xl text-center mb-2">✊</p>
@@ -582,18 +591,10 @@ export default function Janken() {
               <li>
                 • 初手はグーが最も多い（約35%）：握り拳は心理的に安定感がある
               </li>
-              <li>
-                • チョキは最も少ない（約30%）：攻撃的で不安定な印象
-              </li>
-              <li>
-                • パーは中間（約35%）：グーを警戒する心理
-              </li>
-              <li>
-                • 同じ手を連続で出しにくい（心理的バイアス）
-              </li>
-              <li>
-                • 負けた後は、負けた手に勝つ手を出しやすい
-              </li>
+              <li>• チョキは最も少ない（約30%）：攻撃的で不安定な印象</li>
+              <li>• パーは中間（約35%）：グーを警戒する心理</li>
+              <li>• 同じ手を連続で出しにくい（心理的バイアス）</li>
+              <li>• 負けた後は、負けた手に勝つ手を出しやすい</li>
               <li className="text-boundary-cyan">
                 • 完全にランダムな選択は、人間には不可能
               </li>
@@ -608,9 +609,7 @@ export default function Janken() {
         </h3>
         <div className="simulator-container">
           <ul className="space-y-2 text-boundary-mist">
-            <li>
-              1. 初手は「パー」を出す（相手がグーを出す確率が高いため）
-            </li>
+            <li>1. 初手は「パー」を出す（相手がグーを出す確率が高いため）</li>
             <li>
               2. 相手が負けた後は、その手に負ける手を出す
               <br />

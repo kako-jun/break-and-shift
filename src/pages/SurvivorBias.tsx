@@ -33,7 +33,10 @@ export default function SurvivorBias() {
   ];
 
   // 累積確率の計算（1000年後まで）
-  const calculateCumulativeRisk = (annualProb: string, years: number): number => {
+  const calculateCumulativeRisk = (
+    annualProb: string,
+    years: number
+  ): number => {
     const prob = parseFloat(annualProb.replace('%/年', '')) / 100;
     // 累積確率 = 1 - (1 - p)^n
     return (1 - Math.pow(1 - prob, years)) * 100;
@@ -45,7 +48,10 @@ export default function SurvivorBias() {
 
   const risk100Years = calculateCumulativeRisk(`${totalAnnualRisk}%/年`, 100);
   const risk1000Years = calculateCumulativeRisk(`${totalAnnualRisk}%/年`, 1000);
-  const risk10000Years = calculateCumulativeRisk(`${totalAnnualRisk}%/年`, 10000);
+  const risk10000Years = calculateCumulativeRisk(
+    `${totalAnnualRisk}%/年`,
+    10000
+  );
 
   return (
     <div className="space-y-12">
@@ -130,12 +136,16 @@ export default function SurvivorBias() {
               />
               <Legend />
               <Bar dataKey="count" name="観測された恒星">
-                {observedData.map((entry, index) => (
+                {observedData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill="#00ff00" />
                 ))}
               </Bar>
               {showSuddenDeath && (
-                <Bar dataKey="suddenDeath" name="突然死した恒星（推定）" fill="#ff0000" />
+                <Bar
+                  dataKey="suddenDeath"
+                  name="突然死した恒星（推定）"
+                  fill="#ff0000"
+                />
               )}
             </BarChart>
           </ResponsiveContainer>
@@ -148,7 +158,9 @@ export default function SurvivorBias() {
               突然の災害（隕石、ガンマ線バースト、超新星爆発など）で消滅した恒星は、
               観測データに含まれない。
               <br />
-              したがって、「平均寿命50億年」は<strong className="text-red-400">生き残った恒星</strong>のデータに過ぎない。
+              したがって、「平均寿命50億年」は
+              <strong className="text-red-400">生き残った恒星</strong>
+              のデータに過ぎない。
             </p>
           </div>
         </div>
@@ -216,9 +228,7 @@ export default function SurvivorBias() {
               <li>
                 • 太陽フレアが数秒間だけ強まるだけで、地球の大気は剥ぎ取られる
               </li>
-              <li>
-                • 人間がコントロールできる範囲 vs できない範囲のギャップ
-              </li>
+              <li>• 人間がコントロールできる範囲 vs できない範囲のギャップ</li>
             </ul>
           </div>
         </div>
@@ -239,12 +249,8 @@ export default function SurvivorBias() {
             <p className="monologue">
               「明日、ガンマ線バーストが地球を直撃したら？」
             </p>
-            <p className="monologue">
-              「太陽フレアが異常に強まったら？」
-            </p>
-            <p className="monologue">
-              「隕石が衝突したら？」
-            </p>
+            <p className="monologue">「太陽フレアが異常に強まったら？」</p>
+            <p className="monologue">「隕石が衝突したら？」</p>
             <p className="monologue text-boundary-cyan">
               「その瞬間、すべての努力は無意味になる。それが現実だ。」
             </p>
@@ -259,10 +265,13 @@ export default function SurvivorBias() {
         <div className="simulator-container">
           <ul className="space-y-3 text-boundary-mist">
             <li className="bg-boundary-dark p-3 rounded">
-              <strong className="text-boundary-cyan">第二次世界大戦の爆撃機</strong>
+              <strong className="text-boundary-cyan">
+                第二次世界大戦の爆撃機
+              </strong>
               <br />
               <span className="text-sm">
-                帰還した機体の損傷箇所を補強すべき？いいえ。帰還<strong>できなかった</strong>機体が撃たれた箇所こそ致命的。
+                帰還した機体の損傷箇所を補強すべき？いいえ。帰還
+                <strong>できなかった</strong>機体が撃たれた箇所こそ致命的。
               </span>
             </li>
             <li className="bg-boundary-dark p-3 rounded">
