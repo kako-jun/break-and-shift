@@ -99,9 +99,7 @@ export default function Chapter5() {
     if (player === opponent) {
       setAikoStreak(prev => {
         const newStreak = prev + 1;
-        if (newStreak > maxAikoStreak) {
-          setMaxAikoStreak(newStreak);
-        }
+        setMaxAikoStreak(prevMax => Math.max(prevMax, newStreak));
         return newStreak;
       });
     } else {

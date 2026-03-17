@@ -25,10 +25,6 @@ export default function SlotMachine() {
   const [totalCost, setTotalCost] = useState(0);
   const [totalPayout, setTotalPayout] = useState(0);
   const [showResultFirst, setShowResultFirst] = useState(false);
-  const [previewResult, setPreviewResult] = useState<{
-    result: [string, string, string];
-    isWin: boolean;
-  } | null>(null);
 
   const COST_PER_SPIN = 100;
 
@@ -115,10 +111,20 @@ export default function SlotMachine() {
 
       for (let i = 0; i < 3; i++) {
         ctx.fillStyle = '#000';
-        ctx.fillRect(startX + i * (slotWidth + 20), startY, slotWidth, slotHeight);
+        ctx.fillRect(
+          startX + i * (slotWidth + 20),
+          startY,
+          slotWidth,
+          slotHeight
+        );
         ctx.strokeStyle = '#4a7c8c';
         ctx.lineWidth = 2;
-        ctx.strokeRect(startX + i * (slotWidth + 20), startY, slotWidth, slotHeight);
+        ctx.strokeRect(
+          startX + i * (slotWidth + 20),
+          startY,
+          slotWidth,
+          slotHeight
+        );
 
         // シンボル
         ctx.font = '60px serif';
@@ -127,7 +133,8 @@ export default function SlotMachine() {
 
         if (spinning) {
           // 回転中はランダムなシンボル
-          const randomSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+          const randomSymbol =
+            SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
           ctx.fillText(
             randomSymbol,
             startX + i * (slotWidth + 20) + slotWidth / 2,
@@ -153,7 +160,11 @@ export default function SlotMachine() {
         ctx.font = 'bold 16px sans-serif';
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
-        ctx.fillText('【種別開示】結果は既に決定済み', canvas.width / 2, canvas.height - 75);
+        ctx.fillText(
+          '【種別開示】結果は既に決定済み',
+          canvas.width / 2,
+          canvas.height - 75
+        );
 
         ctx.font = '40px serif';
         ctx.fillText(
@@ -179,9 +190,8 @@ export default function SlotMachine() {
     // レバーを引いた瞬間に結果を決定（これがリアルなスロット）
     const determined = determineResult();
 
-    if (showResultFirst) {
-      setPreviewResult(determined);
-    }
+    // 種別開示モード用にローカル変数で保持する（stateのクロージャ問題を回避）
+    const activePreview = showResultFirst ? determined : null;
 
     setIsSpinning(true);
     const canvas = canvasRef.current;
@@ -215,15 +225,26 @@ export default function SlotMachine() {
 
       for (let j = 0; j < 3; j++) {
         ctx.fillStyle = '#000';
-        ctx.fillRect(startX + j * (slotWidth + 20), startY, slotWidth, slotHeight);
+        ctx.fillRect(
+          startX + j * (slotWidth + 20),
+          startY,
+          slotWidth,
+          slotHeight
+        );
         ctx.strokeStyle = '#4a7c8c';
         ctx.lineWidth = 2;
-        ctx.strokeRect(startX + j * (slotWidth + 20), startY, slotWidth, slotHeight);
+        ctx.strokeRect(
+          startX + j * (slotWidth + 20),
+          startY,
+          slotWidth,
+          slotHeight
+        );
 
         ctx.font = '60px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const randomSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+        const randomSymbol =
+          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
         ctx.fillText(
           randomSymbol,
           startX + j * (slotWidth + 20) + slotWidth / 2,
@@ -231,7 +252,7 @@ export default function SlotMachine() {
         );
       }
 
-      if (showResultFirst && previewResult) {
+      if (activePreview) {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.9)';
         ctx.fillRect(20, canvas.height - 100, canvas.width - 40, 80);
         ctx.strokeStyle = '#ff0000';
@@ -241,11 +262,15 @@ export default function SlotMachine() {
         ctx.font = 'bold 16px sans-serif';
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
-        ctx.fillText('【種別開示】結果は既に決定済み', canvas.width / 2, canvas.height - 75);
+        ctx.fillText(
+          '【種別開示】結果は既に決定済み',
+          canvas.width / 2,
+          canvas.height - 75
+        );
 
         ctx.font = '40px serif';
         ctx.fillText(
-          previewResult.result.join(' '),
+          activePreview.result.join(' '),
           canvas.width / 2,
           canvas.height - 40
         );
@@ -282,10 +307,20 @@ export default function SlotMachine() {
 
     for (let i = 0; i < 3; i++) {
       ctx.fillStyle = '#000';
-      ctx.fillRect(startX + i * (slotWidth + 20), startY, slotWidth, slotHeight);
+      ctx.fillRect(
+        startX + i * (slotWidth + 20),
+        startY,
+        slotWidth,
+        slotHeight
+      );
       ctx.strokeStyle = determined.isWin ? '#00ff00' : '#4a7c8c';
       ctx.lineWidth = determined.isWin ? 4 : 2;
-      ctx.strokeRect(startX + i * (slotWidth + 20), startY, slotWidth, slotHeight);
+      ctx.strokeRect(
+        startX + i * (slotWidth + 20),
+        startY,
+        slotWidth,
+        slotHeight
+      );
 
       ctx.font = '60px serif';
       ctx.textAlign = 'center';
@@ -308,15 +343,14 @@ export default function SlotMachine() {
     ctx.fillStyle = '#f0c040';
     ctx.fillText('スロットマシン', canvas.width / 2, 50);
 
-    // 記録
-    const newSpin = currentSpin + 1;
-    setCurrentSpin(newSpin);
+    // 記録（currentSpinはstaleクロージャを避けるためfunctional updateを使う）
+    setCurrentSpin(prev => prev + 1);
     setTotalCost(prev => prev + COST_PER_SPIN);
     setTotalPayout(prev => prev + determined.payout);
     setResults(prev => [
       ...prev,
       {
-        spin: newSpin,
+        spin: prev.length + 1,
         result: determined.result,
         isWin: determined.isWin,
         演出: determined.演出,
@@ -326,7 +360,6 @@ export default function SlotMachine() {
     ]);
 
     setIsSpinning(false);
-    setPreviewResult(null);
   };
 
   const reset = () => {
@@ -334,7 +367,6 @@ export default function SlotMachine() {
     setCurrentSpin(0);
     setTotalCost(0);
     setTotalPayout(0);
-    setPreviewResult(null);
   };
 
   const autoSpin = async (count: number) => {
@@ -344,12 +376,18 @@ export default function SlotMachine() {
     }
   };
 
-  const winRate = currentSpin > 0 ? (results.filter(r => r.isWin).length / currentSpin) * 100 : 0;
+  const winRate =
+    currentSpin > 0
+      ? (results.filter(r => r.isWin).length / currentSpin) * 100
+      : 0;
   const netProfit = totalPayout - totalCost;
   const reachCount = results.filter(r => r.演出.includes('リーチ')).length;
-  const reachWinRate = reachCount > 0
-    ? (results.filter(r => r.演出.includes('リーチ') && r.isWin).length / reachCount) * 100
-    : 0;
+  const reachWinRate =
+    reachCount > 0
+      ? (results.filter(r => r.演出.includes('リーチ') && r.isWin).length /
+          reachCount) *
+        100
+      : 0;
 
   return (
     <div className="space-y-12">
@@ -367,7 +405,9 @@ export default function SlotMachine() {
           <p className="monologue">
             「パチンコやスロットの煽り演出——リーチ、フラッシュ、音楽。」
           </p>
-          <p className="monologue">「あれを見て、『当たるかも！』と期待する。」</p>
+          <p className="monologue">
+            「あれを見て、『当たるかも！』と期待する。」
+          </p>
           <p className="monologue">
             「だが、真実は残酷だ。レバーを引いた瞬間に、すでに結果は決まっている。」
           </p>
@@ -512,31 +552,36 @@ export default function SlotMachine() {
             <div className="mt-6 space-y-2">
               <h3 className="text-boundary-cyan">履歴（直近10回）</h3>
               <div className="max-h-60 overflow-y-auto space-y-1">
-                {results.slice(-10).reverse().map((result) => (
-                  <div
-                    key={result.spin}
-                    className={`p-3 rounded ${
-                      result.isWin
-                        ? 'bg-green-900/20 border border-green-400'
-                        : 'bg-boundary-dark border border-boundary-blue'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="text-boundary-mist">
-                        {result.spin}回目
-                      </span>
-                      <span className="text-2xl">{result.result.join(' ')}</span>
-                      <span className="text-sm text-boundary-mist">
-                        {result.演出}
-                      </span>
-                      <span
-                        className={`font-bold ${result.isWin ? 'text-green-400' : 'text-red-400'}`}
-                      >
-                        {result.isWin ? `+¥${result.payout}` : '✗'}
-                      </span>
+                {results
+                  .slice(-10)
+                  .reverse()
+                  .map(result => (
+                    <div
+                      key={result.spin}
+                      className={`p-3 rounded ${
+                        result.isWin
+                          ? 'bg-green-900/20 border border-green-400'
+                          : 'bg-boundary-dark border border-boundary-blue'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-boundary-mist">
+                          {result.spin}回目
+                        </span>
+                        <span className="text-2xl">
+                          {result.result.join(' ')}
+                        </span>
+                        <span className="text-sm text-boundary-mist">
+                          {result.演出}
+                        </span>
+                        <span
+                          className={`font-bold ${result.isWin ? 'text-green-400' : 'text-red-400'}`}
+                        >
+                          {result.isWin ? `+¥${result.payout}` : '✗'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}
@@ -549,9 +594,7 @@ export default function SlotMachine() {
         <div className="simulator-container">
           <h3 className="text-xl text-boundary-cyan mb-4">境界ユウの考察</h3>
           <div className="space-y-4">
-            <p className="monologue">
-              「種別開示モードで見れば一目瞭然だ。」
-            </p>
+            <p className="monologue">「種別開示モードで見れば一目瞭然だ。」</p>
             <p className="monologue">
               「レバーを引いた瞬間、コンピューターは既に当落を決定している。」
             </p>
@@ -575,16 +618,18 @@ export default function SlotMachine() {
         <div className="simulator-container">
           <ul className="space-y-2 text-boundary-mist">
             <li>
-              • スロットは乱数生成器（RNG）で結果を決定。レバーを引いた瞬間に確定
+              •
+              スロットは乱数生成器（RNG）で結果を決定。レバーを引いた瞬間に確定
             </li>
             <li>
-              •
-              リーチ演出は「もうすぐ当たりそう」と錯覚させるための心理トリック
+              • リーチ演出は「もうすぐ当たりそう」と錯覚させるための心理トリック
             </li>
             <li>
               • 実際にはリーチの多くがハズレ（ハズレリーチ）。期待値は変わらない
             </li>
-            <li>• 演出の長さは、プレイ時間を引き延ばして店の滞在時間を増やす</li>
+            <li>
+              • 演出の長さは、プレイ時間を引き延ばして店の滞在時間を増やす
+            </li>
             <li className="text-boundary-cyan">
               • 「次こそは」と思わせることで、依存性を高める設計
             </li>

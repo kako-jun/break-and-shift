@@ -150,7 +150,8 @@ export default function ClawMachine() {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    const failedAttempts = currentAttempt - prizeCount;
+    // resultsから現在の失敗数を計算する（stateのstaleクロージャを避ける）
+    const failedAttempts = results.filter(r => !r.success).length;
     const gripStrength = calculateGripStrength(failedAttempts, expectedValue);
     setCurrentGripStrength(gripStrength);
 
@@ -319,14 +320,13 @@ export default function ClawMachine() {
       await animate(centerX, centerX, 100, 100, 300, false, false);
     }
 
-    // 記録
-    const newAttempt = currentAttempt + 1;
-    setCurrentAttempt(newAttempt);
+    // 記録（currentAttemptはstaleクロージャを避けるためfunctional updateを使う）
+    setCurrentAttempt(prev => prev + 1);
     setTotalCost(prev => prev + COST_PER_PLAY);
     setResults(prev => [
       ...prev,
       {
-        attempt: newAttempt,
+        attempt: prev.length + 1,
         gripStrength: gripStrength,
         success: success,
         cost: COST_PER_PLAY,

@@ -56,6 +56,10 @@ export default function DiceScene() {
             <boxGeometry args={[6, 2, 0.2]} />
             <meshStandardMaterial color="#1a2332" />
           </mesh>
+          <mesh position={[0, 1, 3]}>
+            <boxGeometry args={[6, 2, 0.2]} />
+            <meshStandardMaterial color="#1a2332" />
+          </mesh>
           <mesh position={[-3, 1, 0]}>
             <boxGeometry args={[0.2, 2, 6]} />
             <meshStandardMaterial color="#1a2332" />

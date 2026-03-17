@@ -23,8 +23,14 @@ export default function Chapter4() {
     N: 0.74, // 74%
   };
 
+  // 確率2倍キャンペーン：SSR・SRの上昇分をNで相殺して合計1.0を維持する
   const currentRates = doubleRate
-    ? { ...baseRates, SSR: baseRates.SSR * 2, SR: baseRates.SR * 2 }
+    ? {
+        SSR: baseRates.SSR * 2,
+        SR: baseRates.SR * 2,
+        R: baseRates.R,
+        N: baseRates.N - baseRates.SSR - baseRates.SR,
+      }
     : baseRates;
 
   const pullPrice = 300;

@@ -41,11 +41,13 @@ export default function AncestorProbability() {
         ancestors: ancestors > 1000000000000 ? 1000000000000 : ancestors,
         日本の人口,
         display:
-          ancestors > 1000000000
-            ? `${(ancestors / 1000000000).toFixed(0)}兆`
-            : ancestors > 1000000
-              ? `${(ancestors / 1000000).toFixed(0)}億`
-              : ancestors.toLocaleString(),
+          ancestors > 1000000000000
+            ? `${(ancestors / 1000000000000).toFixed(0)}兆`
+            : ancestors > 100000000
+              ? `${(ancestors / 100000000).toFixed(0)}億`
+              : ancestors > 10000
+                ? `${(ancestors / 10000).toFixed(0)}万`
+                : ancestors.toLocaleString(),
       });
     }
     return data;
@@ -247,10 +249,9 @@ export default function AncestorProbability() {
                 tickFormatter={value => {
                   if (value >= 1000000000000)
                     return `${(value / 1000000000000).toFixed(0)}兆`;
-                  if (value >= 1000000000)
-                    return `${(value / 1000000000).toFixed(0)}億`;
-                  if (value >= 1000000)
-                    return `${(value / 1000000).toFixed(0)}百万`;
+                  if (value >= 100000000)
+                    return `${(value / 100000000).toFixed(0)}億`;
+                  if (value >= 10000) return `${(value / 10000).toFixed(0)}万`;
                   return value.toLocaleString();
                 }}
               />
@@ -267,10 +268,10 @@ export default function AncestorProbability() {
                   if (name === 'ancestors') {
                     if (numericValue >= 1000000000000)
                       return `${(numericValue / 1000000000000).toFixed(0)}兆人`;
-                    if (numericValue >= 1000000000)
-                      return `${(numericValue / 1000000000).toFixed(0)}億人`;
-                    if (numericValue >= 1000000)
-                      return `${(numericValue / 1000000).toFixed(0)}百万人`;
+                    if (numericValue >= 100000000)
+                      return `${(numericValue / 100000000).toFixed(0)}億人`;
+                    if (numericValue >= 10000)
+                      return `${(numericValue / 10000).toFixed(0)}万人`;
                     return numericValue.toLocaleString() + '人';
                   }
                   return numericValue.toLocaleString() + '人';

@@ -32,26 +32,24 @@ export default function SurvivorBias() {
     { name: '小惑星帯の崩壊', probability: '0.0002%/年', impact: '長期的影響' },
   ];
 
-  // 累積確率の計算（1000年後まで）
+  // 累積確率の計算：年率(%)と年数を受け取り、累積確率(%)を返す
   const calculateCumulativeRisk = (
-    annualProb: string,
+    annualProbPercent: number,
     years: number
   ): number => {
-    const prob = parseFloat(annualProb.replace('%/年', '')) / 100;
+    const prob = annualProbPercent / 100;
     // 累積確率 = 1 - (1 - p)^n
     return (1 - Math.pow(1 - prob, years)) * 100;
   };
 
+  // 年率の合計を計算する（各リスクの確率文字列をパースして合算）
   const totalAnnualRisk = suddenDeathRisks.reduce((sum, risk) => {
     return sum + parseFloat(risk.probability.replace('%/年', ''));
   }, 0);
 
-  const risk100Years = calculateCumulativeRisk(`${totalAnnualRisk}%/年`, 100);
-  const risk1000Years = calculateCumulativeRisk(`${totalAnnualRisk}%/年`, 1000);
-  const risk10000Years = calculateCumulativeRisk(
-    `${totalAnnualRisk}%/年`,
-    10000
-  );
+  const risk100Years = calculateCumulativeRisk(totalAnnualRisk, 100);
+  const risk1000Years = calculateCumulativeRisk(totalAnnualRisk, 1000);
+  const risk10000Years = calculateCumulativeRisk(totalAnnualRisk, 10000);
 
   return (
     <div className="space-y-12">

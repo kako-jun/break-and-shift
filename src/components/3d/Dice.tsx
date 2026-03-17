@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
@@ -84,11 +84,13 @@ export default function Dice({ position, value }: DiceProps) {
         angularVelocityRef.current.z *= 0.95;
       }
 
-      // 静止判定
-      if (
-        Math.abs(velocityRef.current.length()) < 0.001 &&
-        Math.abs(angularVelocityRef.current.x) < 0.01
-      ) {
+      // 静止判定（全軸の角速度を確認する）
+      const angVelMag = Math.sqrt(
+        angularVelocityRef.current.x * angularVelocityRef.current.x +
+          angularVelocityRef.current.y * angularVelocityRef.current.y +
+          angularVelocityRef.current.z * angularVelocityRef.current.z
+      );
+      if (velocityRef.current.length() < 0.001 && angVelMag < 0.01) {
         velocityRef.current.set(0, 0, 0);
         angularVelocityRef.current.set(0, 0, 0);
       }
@@ -117,9 +119,10 @@ export default function Dice({ position, value }: DiceProps) {
   };
 
   // 初期化時に振る
-  useRef(() => {
+
+  useEffect(() => {
     rollDice();
-  });
+  }, []);
 
   return (
     <group>
@@ -133,16 +136,16 @@ export default function Dice({ position, value }: DiceProps) {
         receiveShadow
       >
         <meshStandardMaterial color="#f0f0f0" roughness={0.3} metalness={0.1} />
-      </RoundedBox>
 
-      {/* サイコロの目（簡易版） */}
-      {value &&
-        getDotPositions(value).map((pos, i) => (
-          <mesh key={i} position={pos}>
-            <sphereGeometry args={[0.08, 16, 16]} />
-            <meshStandardMaterial color="#1a1a1a" />
-          </mesh>
-        ))}
+        {/* サイコロの目（ダイスメッシュの子として配置し、回転に追従させる） */}
+        {value &&
+          getDotPositions(value).map((pos, i) => (
+            <mesh key={i} position={pos}>
+              <sphereGeometry args={[0.08, 16, 16]} />
+              <meshStandardMaterial color="#1a1a1a" />
+            </mesh>
+          ))}
+      </RoundedBox>
     </group>
   );
 }

@@ -28,17 +28,19 @@ export default function Chinchirorin() {
   };
 
   const autoRoll = (count: number) => {
-    for (let i = 0; i < count; i++) {
-      setTimeout(() => {
-        const dice: [number, number, number] = [
-          Math.floor(Math.random() * 6) + 1,
-          Math.floor(Math.random() * 6) + 1,
-          Math.floor(Math.random() * 6) + 1,
-        ];
-        setCurrentRoll(dice);
-        setResults(prev => [...prev, { dice, timestamp: Date.now() }]);
-      }, i * 100);
-    }
+    // すべての結果を先に計算し、一括でstateに反映する（staleクロージャを回避）
+    const newRolls: RollResult[] = Array.from({ length: count }, () => ({
+      dice: [
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+      ] as [number, number, number],
+      timestamp: Date.now(),
+    }));
+
+    const lastRoll = newRolls[newRolls.length - 1];
+    setCurrentRoll(lastRoll.dice);
+    setResults(prev => [...prev, ...newRolls]);
   };
 
   const reset = () => {
