@@ -190,53 +190,65 @@ jobs:
           # Ensure trailing backslash for Windows
           if (-not $commonPath.EndsWith("\")) { $commonPath += "\" }
 
-          # hspcmp requires being run from the source directory context
-          # so that #include relative paths work
-          Push-Location $srcDir
-          $hspcmpPath = (Resolve-Path "../../hsp3/hspcmp.exe").Path
+          # Use absolute paths to avoid Push-Location issues with child processes
+          $hspcmpPath = (Resolve-Path "hsp3/hspcmp.exe").Path
+          $srcFullPath = (Resolve-Path $srcDir).Path
+          $mainHsp = Join-Path $srcFullPath "main.hsp"
+          $axOutput = Join-Path $srcFullPath "start.ax"
 
-          Write-Host "Running: $hspcmpPath -ostart.ax -i -u --compath=$commonPath main.hsp"
-          & $hspcmpPath -ostart.ax -i -u "--compath=$commonPath" main.hsp
+          # Run hspcmp with absolute paths for both input and output
+          Write-Host "Running: $hspcmpPath -o$axOutput -i -u -m --compath=$commonPath $mainHsp"
+          & $hspcmpPath "-o$axOutput" -i -u -m "--compath=$commonPath" $mainHsp
           $compileResult = $LASTEXITCODE
 
           if ($compileResult -ne 0) {
             Write-Error "Compilation failed for $exp (exit code: $compileResult)"
-            Pop-Location
             exit 1
           }
 
-          # hspcmp may output start.ax in different locations depending on version:
-          # 1. Current directory (Push-Location'd to $srcDir)
-          # 2. Next to hspcmp.exe (hsp3/)
-          # 3. Working directory of the runner
+          # Search for the .ax file (hspcmp may use different output names/locations)
           $axFound = $null
-          if (Test-Path "start.ax") {
-            $axFound = (Resolve-Path "start.ax").Path
-          } elseif (Test-Path "../../hsp3/start.ax") {
-            $axFound = (Resolve-Path "../../hsp3/start.ax").Path
-          } else {
-            # Search the entire workspace
-            Pop-Location
+          $searchNames = @("start.ax", "main.ax")
+          $searchDirs = @($srcFullPath, (Get-Location).Path, (Resolve-Path "hsp3").Path)
+
+          foreach ($dir in $searchDirs) {
+            foreach ($name in $searchNames) {
+              $candidate = Join-Path $dir $name
+              if (Test-Path $candidate) {
+                $axFound = $candidate
+                break
+              }
+            }
+            if ($axFound) { break }
+          }
+
+          # Last resort: recursive search
+          if (-not $axFound) {
+            Write-Host "Searching entire workspace for .ax files..."
+            Get-ChildItem -Path "." -Recurse -Filter "*.ax" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "  Found: $($_.FullName) ($($_.Length) bytes)"
+            }
             $axSearch = Get-ChildItem -Path "." -Recurse -Filter "start.ax" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $axSearch) {
+              $axSearch = Get-ChildItem -Path "." -Recurse -Filter "main.ax" -ErrorAction SilentlyContinue | Select-Object -First 1
+            }
             if ($axSearch) {
               $axFound = $axSearch.FullName
             }
-            Push-Location $srcDir
           }
 
           if (-not $axFound) {
             Write-Error "start.ax was not generated for $exp"
-            Pop-Location
             exit 1
           }
 
-          # Move start.ax to srcDir if found elsewhere
-          if ($axFound -ne (Join-Path (Get-Location).Path "start.ax")) {
-            Copy-Item $axFound "start.ax"
+          # Ensure it's named start.ax in the srcDir (hsp3dish.js expects this name)
+          $targetAx = Join-Path $srcFullPath "start.ax"
+          if ($axFound -ne $targetAx) {
+            Copy-Item $axFound $targetAx -Force
           }
 
-          Write-Host "start.ax found at: $axFound ($($(Get-Item start.ax).Length) bytes)"
-          Pop-Location
+          Write-Host "start.ax ready at: $targetAx ($($(Get-Item $targetAx).Length) bytes)"
 
           # -------------------------------------------
           # 2. Prepare data directory for file_packager
