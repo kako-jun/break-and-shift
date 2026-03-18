@@ -10,9 +10,7 @@ src/
 ├── App.tsx                      # ルーティング定義
 ├── components/
 │   ├── Layout.tsx               # 共通レイアウト
-│   └── 3d/
-│       ├── Dice.tsx             # 3Dサイコロコンポーネント
-│       └── DiceScene.tsx        # サイコロシーン
+│   └── HspEmbed.tsx             # HSP3Dish.js埋め込みコンポーネント
 ├── pages/
 │   ├── Home.tsx                 # ホームページ
 │   ├── Chapter1.tsx             # 確率と割合の境界線
@@ -33,11 +31,10 @@ src/
 
 ## 技術詳細
 
-### 3Dサイコロシミュレーション
+### HSP3Dish.js統合
 
-- Three.js + React Three Fiber で物理シミュレーション
-- 重力・反発・摩擦を簡易実装
-- @react-three/drei の `RoundedBox` で丸みのあるサイコロ
+- HSP3Dish.jsでインタラクティブシミュレーションを埋め込み
+- HspEmbedコンポーネントで統一的に管理
 
 ### 統計検定
 
@@ -52,16 +49,12 @@ src/
 
 ## 依存パッケージ
 
-| パッケージ         | 用途                   |
-| ------------------ | ---------------------- |
-| react              | UI                     |
-| react-router-dom   | ルーティング           |
-| three              | 3Dレンダリング         |
-| @react-three/fiber | React + Three.js統合   |
-| @react-three/drei  | Three.jsユーティリティ |
-| cannon-es          | 物理エンジン           |
-| recharts           | グラフ表示             |
-| tailwindcss        | スタイリング           |
+| パッケージ       | 用途                             |
+| ---------------- | -------------------------------- |
+| react            | UI                               |
+| react-router-dom | ルーティング                     |
+| HSP3Dish.js      | インタラクティブシミュレーション |
+| tailwindcss      | スタイリング                     |
 
 ## ビルド
 
