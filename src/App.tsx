@@ -13,6 +13,7 @@ import Janken from './pages/Janken';
 import RainWalk from './pages/RainWalk';
 import SurvivorBias from './pages/SurvivorBias';
 import AncestorProbability from './pages/AncestorProbability';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/rain-walk" element={<RainWalk />} />
         <Route path="/survivor-bias" element={<SurvivorBias />} />
         <Route path="/ancestor-probability" element={<AncestorProbability />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
   );
