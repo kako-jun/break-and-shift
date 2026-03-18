@@ -7,7 +7,7 @@
 ## 特徴
 
 - 確率と割合の違いをインタラクティブに学習
-- 3Dサイコロシミュレーション（Three.js）
+- 3Dサイコロシミュレーション（HSP3Dish.js）
 - 各種確率シミュレーター
 - 統計的検定（カイ二乗検定）の可視化
 
@@ -46,9 +46,8 @@ http://localhost:5173/break-and-shift/ で開く
 
 - React 18 + TypeScript
 - Vite
-- Three.js (@react-three/fiber, @react-three/drei)
+- HSP3Dish.js（インタラクティブシミュレーション）
 - Tailwind CSS
-- Recharts
 
 ## ライセンス
 
