@@ -205,13 +205,37 @@ jobs:
             exit 1
           }
 
-          if (-not (Test-Path "start.ax")) {
+          # hspcmp may output start.ax in different locations depending on version:
+          # 1. Current directory (Push-Location'd to $srcDir)
+          # 2. Next to hspcmp.exe (hsp3/)
+          # 3. Working directory of the runner
+          $axFound = $null
+          if (Test-Path "start.ax") {
+            $axFound = (Resolve-Path "start.ax").Path
+          } elseif (Test-Path "../../hsp3/start.ax") {
+            $axFound = (Resolve-Path "../../hsp3/start.ax").Path
+          } else {
+            # Search the entire workspace
+            Pop-Location
+            $axSearch = Get-ChildItem -Path "." -Recurse -Filter "start.ax" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($axSearch) {
+              $axFound = $axSearch.FullName
+            }
+            Push-Location $srcDir
+          }
+
+          if (-not $axFound) {
             Write-Error "start.ax was not generated for $exp"
             Pop-Location
             exit 1
           }
 
-          Write-Host "start.ax generated successfully ($($(Get-Item start.ax).Length) bytes)"
+          # Move start.ax to srcDir if found elsewhere
+          if ($axFound -ne (Join-Path (Get-Location).Path "start.ax")) {
+            Copy-Item $axFound "start.ax"
+          }
+
+          Write-Host "start.ax found at: $axFound ($($(Get-Item start.ax).Length) bytes)"
           Pop-Location
 
           # -------------------------------------------
