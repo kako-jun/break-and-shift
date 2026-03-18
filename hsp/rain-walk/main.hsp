@@ -1,0 +1,487 @@
+; ============================================================
+; 雨の中の移動 — 走るべきか歩くべきか
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/rain_drop.png (雨粒スプライト)
+;   res/person_walk.png (歩行人物)
+;   res/person_run.png (走行人物)
+;   res/background.png (街の背景)
+;   res/rain_ambient.mp3 (雨の環境音)
+;   res/splash.mp3 (水たまりSE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+#const MAX_DROPS 200
+
+; シミュレーション領域
+#const SIM_LEFT 20
+#const SIM_RIGHT 500
+#const SIM_TOP 60
+#const SIM_BOTTOM 340
+#const GROUND_Y 320
+
+; 色
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+
+; 雨粒
+dim drop_x, MAX_DROPS
+dim drop_y, MAX_DROPS
+dim drop_speed, MAX_DROPS
+
+; パラメータ（スライダー制御）
+distance = 100       ; 移動距離 (m) 10-500
+rain_rate = 50       ; 雨量 (mm/h) 1-200
+body_width = 40      ; 体幅 (cm) 20-80
+body_height = 170    ; 身長 (cm) 100-200
+
+; スライダー定義
+#const SLIDER_COUNT 4
+#const SLIDER_X 530
+#const SLIDER_W 240
+#const SLIDER_H 16
+dim slider_y, SLIDER_COUNT
+dim slider_min, SLIDER_COUNT
+dim slider_max, SLIDER_COUNT
+dim slider_val, SLIDER_COUNT
+sdim slider_label, 32, SLIDER_COUNT
+sdim slider_unit, 16, SLIDER_COUNT
+
+slider_y(0) = 80  : slider_min(0) = 10  : slider_max(0) = 500 : slider_val(0) = 100
+slider_y(1) = 140 : slider_min(1) = 1   : slider_max(1) = 200 : slider_val(1) = 50
+slider_y(2) = 200 : slider_min(2) = 20  : slider_max(2) = 80  : slider_val(2) = 40
+slider_y(3) = 260 : slider_min(3) = 100 : slider_max(3) = 200 : slider_val(3) = 170
+
+slider_label(0) = "移動距離"
+slider_label(1) = "雨量"
+slider_label(2) = "体幅"
+slider_label(3) = "身長"
+slider_unit(0) = "m"
+slider_unit(1) = "mm/h"
+slider_unit(2) = "cm"
+slider_unit(3) = "cm"
+
+dragging_slider = -1
+
+; 人物
+person_x = 60
+person_speed = 0  ; 0=歩き, 1=走り
+walk_speed = 15   ; ピクセル/秒 (歩き: 約5km/h相当)
+run_speed = 45    ; ピクセル/秒 (走り: 約15km/h相当)
+is_moving = 0
+walk_frame = 0
+
+; 結果
+wetness_walk = 0
+wetness_run = 0
+
+; 雨初期化
+repeat MAX_DROPS
+    drop_x(cnt) = rnd(SIM_RIGHT - SIM_LEFT) + SIM_LEFT
+    drop_y(cnt) = rnd(SIM_BOTTOM - SIM_TOP) + SIM_TOP
+    drop_speed(cnt) = 4 + rnd(4)
+loop
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 10
+    mes "雨の中の移動 — 走ると濡れにくい？"
+
+    ; シミュレーション表示
+    gosub *draw_sim
+
+    ; 雨粒
+    gosub *draw_rain
+
+    ; 人物
+    gosub *draw_person
+
+    ; スライダー
+    gosub *draw_sliders
+
+    ; 計算結果
+    gosub *calc_wetness
+    gosub *draw_results
+
+    ; ボタン
+    gosub *draw_buttons
+
+    ; 入力
+    gosub *handle_input
+
+    ; 更新
+    gosub *update
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- シミュレーション背景 ---
+*draw_sim
+    ; 空（暗い）
+    color 10, 15, 25
+    boxf SIM_LEFT, SIM_TOP, SIM_RIGHT, SIM_BOTTOM
+
+    ; 地面
+    color 30, 35, 25
+    boxf SIM_LEFT, GROUND_Y, SIM_RIGHT, SIM_BOTTOM
+
+    ; ゴール線
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    gx = SIM_RIGHT - 40
+    line gx, SIM_TOP, gx, GROUND_Y
+    font "MS Gothic", 10
+    pos gx - 15, SIM_TOP + 2
+    mes "ゴール"
+
+    ; 枠線
+    color 50, 55, 65
+    line SIM_LEFT, SIM_TOP, SIM_RIGHT, SIM_TOP
+    line SIM_RIGHT, SIM_TOP, SIM_RIGHT, SIM_BOTTOM
+    line SIM_RIGHT, SIM_BOTTOM, SIM_LEFT, SIM_BOTTOM
+    line SIM_LEFT, SIM_BOTTOM, SIM_LEFT, SIM_TOP
+    return
+
+; --- 雨粒描画 ---
+*draw_rain
+    rain_intensity = slider_val(1)
+    visible_drops = rain_intensity * MAX_DROPS / 200
+    if visible_drops > MAX_DROPS : visible_drops = MAX_DROPS
+
+    repeat visible_drops
+        ; 雨粒を更新
+        drop_y(cnt) += drop_speed(cnt)
+        if drop_y(cnt) > GROUND_Y {
+            drop_y(cnt) = SIM_TOP
+            drop_x(cnt) = rnd(SIM_RIGHT - SIM_LEFT) + SIM_LEFT
+        }
+
+        ; 描画（水色の短い線）
+        alpha = 100 + rnd(80)
+        color 100, 140, 200
+        line drop_x(cnt), drop_y(cnt), drop_x(cnt) - 1, drop_y(cnt) + 6
+    loop
+    return
+
+; --- 人物描画（棒人間）---
+*draw_person
+    px = person_x
+    py = GROUND_Y
+
+    ; 身長に応じたスケール
+    h_scale = slider_val(3)  ; cm
+    draw_h = h_scale * 80 / 200  ; ピクセル高さ
+    if draw_h < 30 : draw_h = 30
+    head_r = draw_h / 8
+    body_top = py - draw_h
+    body_mid = py - draw_h * 5 / 10
+    w_half = slider_val(2) * 15 / 80  ; 体幅に応じた幅
+
+    ; 色
+    color 200, 210, 230
+
+    ; 頭
+    circle px - head_r, body_top - head_r * 2, px + head_r, body_top, 1
+
+    ; 体
+    line px, body_top, px, body_mid
+
+    ; 腕
+    walk_frame++
+    arm_swing = 0
+    leg_swing = 0
+    if is_moving {
+        if person_speed == 0 {
+            arm_swing = (walk_frame \ 30) - 15
+            leg_swing = (walk_frame \ 30) - 15
+        } else {
+            arm_swing = ((walk_frame * 2) \ 30) - 15
+            leg_swing = ((walk_frame * 2) \ 30) - 15
+        }
+    }
+    ; 左腕
+    line px, body_top + draw_h / 5, px - w_half + arm_swing, body_mid - 5
+    ; 右腕
+    line px, body_top + draw_h / 5, px + w_half - arm_swing, body_mid - 5
+
+    ; 脚
+    line px, body_mid, px - 8 - leg_swing, py
+    line px, body_mid, px + 8 + leg_swing, py
+
+    ; 体幅の可視化（半透明の矩形）
+    color 100, 140, 200
+    boxf px - w_half, body_top, px - w_half + 1, body_mid
+    boxf px + w_half, body_top, px + w_half + 1, body_mid
+
+    ; 上面の可視化
+    line px - w_half, body_top - head_r * 2, px + w_half, body_top - head_r * 2
+    return
+
+; --- スライダー描画 ---
+*draw_sliders
+    font "MS Gothic", 13
+    repeat SLIDER_COUNT
+        sy = slider_y(cnt)
+
+        ; ラベル
+        color TEXT_R, TEXT_G, TEXT_B
+        pos SLIDER_X, sy - 18
+        mes slider_label(cnt) + ": " + slider_val(cnt) + " " + slider_unit(cnt)
+
+        ; トラック
+        color 40, 45, 55
+        boxf SLIDER_X, sy, SLIDER_X + SLIDER_W, sy + SLIDER_H
+
+        ; 充填部分
+        color ACCENT_R, ACCENT_G, ACCENT_B
+        fill_w = (slider_val(cnt) - slider_min(cnt)) * SLIDER_W / (slider_max(cnt) - slider_min(cnt))
+        boxf SLIDER_X, sy, SLIDER_X + fill_w, sy + SLIDER_H
+
+        ; つまみ
+        color 200, 205, 215
+        knob_x = SLIDER_X + fill_w
+        boxf knob_x - 4, sy - 3, knob_x + 4, sy + SLIDER_H + 3
+    loop
+    return
+
+; --- 濡れ量計算 ---
+*calc_wetness
+    ; 物理モデル:
+    ;   上面からの濡れ = top_area × rain_rate × time
+    ;   前面からの濡れ = front_area × speed × rain_rate × time / rain_fall_speed
+    ;
+    ; 簡略化: rain_fall_speed は固定 (9 m/s)
+    ;
+    ; 歩き: speed = 1.4 m/s
+    ; 走り: speed = 4.2 m/s
+
+    d = slider_val(0)        ; 距離 (m)
+    r = slider_val(1)        ; 雨量 (mm/h)
+    w = slider_val(2)        ; 体幅 (cm)
+    h = slider_val(3)        ; 身長 (cm)
+
+    ; 歩きの場合
+    walk_spd = 14       ; 1.4 m/s * 10
+    walk_time = d * 10 / walk_spd  ; 秒 * 10 / 10 = 秒 (整数)
+    if walk_time < 1 : walk_time = 1
+    top_area = w * 30 / 100    ; 頭+肩の面積(仮: 幅×30cm)
+    front_area = w * h / 100   ; 前面 (cm²→概算)
+
+    ; 上面濡れ (arbitrary units)
+    wet_top_walk = top_area * r * walk_time / 3600
+    ; 前面濡れ
+    wet_front_walk = front_area * walk_spd * r / (90 * 36)  ; rain_speed=9m/s → /90
+    ; 前面は距離に依存（時間に関係なく一定量/m）
+    wet_front_walk = front_area * r * d / (90 * 100)
+    wetness_walk = wet_top_walk + wet_front_walk
+
+    ; 走りの場合
+    run_spd = 42        ; 4.2 m/s * 10
+    run_time = d * 10 / run_spd
+    if run_time < 1 : run_time = 1
+    wet_top_run = top_area * r * run_time / 3600
+    wet_front_run = front_area * r * d / (90 * 100)  ; 前面は同じ
+    wetness_run = wet_top_run + wet_front_run
+
+    ; スケーリング（表示用、最大200程度に正規化）
+    if wetness_walk > 999 : wetness_walk = 999
+    if wetness_run > 999 : wetness_run = 999
+    return
+
+; --- 結果描画 ---
+*draw_results
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 15
+    pos 530, 330
+    mes "【濡れ具合の比較】"
+
+    ; 歩き
+    pos 530, 360
+    mes "歩き: " + wetness_walk
+    color 80, 130, 200
+    bar_w_walk = wetness_walk * 220 / 400
+    if bar_w_walk > 220 : bar_w_walk = 220
+    if bar_w_walk < 2 : bar_w_walk = 2
+    boxf 530, 380, 530 + bar_w_walk, 396
+
+    ; 走り
+    color TEXT_R, TEXT_G, TEXT_B
+    pos 530, 405
+    mes "走り: " + wetness_run
+    color 200, 100, 80
+    bar_w_run = wetness_run * 220 / 400
+    if bar_w_run > 220 : bar_w_run = 220
+    if bar_w_run < 2 : bar_w_run = 2
+    boxf 530, 425, 530 + bar_w_run, 441
+
+    ; 差分
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+    pos 530, 455
+    if wetness_walk > wetness_run {
+        diff = wetness_walk - wetness_run
+        if wetness_walk > 0 {
+            pct = diff * 100 / wetness_walk
+        } else {
+            pct = 0
+        }
+        mes "走ると " + pct + "% 濡れにくい"
+    } else {
+        mes "差はほぼなし"
+    }
+
+    ; 解説
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    font "MS Gothic", 11
+    pos 530, 485
+    mes "【ポイント】"
+    pos 530, 502
+    mes "前面の濡れは速度に依存しない"
+    pos 530, 518
+    mes "（距離が同じなら通過する雨量は同じ）"
+    pos 530, 536
+    mes "上面の濡れは時間に比例"
+    pos 530, 552
+    mes "→ 走れば上面だけ減る"
+    pos 530, 570
+    mes "→ 短距離なら差は小さい"
+    return
+
+; --- ボタン描画 ---
+*draw_buttons
+    ; 歩くボタン
+    wx = 60 : wy = 360
+    if person_speed == 0 && is_moving {
+        color BTN_R + 20, BTN_G + 20, BTN_B + 20
+    } else {
+        color BTN_R, BTN_G, BTN_B
+    }
+    boxf wx, wy, wx + 100, wy + 36
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 16
+    pos wx + 22, wy + 8
+    mes "歩く"
+
+    ; 走るボタン
+    rx = 180 : ry = 360
+    if person_speed == 1 && is_moving {
+        color BTN_R + 20, BTN_G + 20, BTN_B + 20
+    } else {
+        color BTN_R, BTN_G, BTN_B
+    }
+    boxf rx, ry, rx + 100, ry + 36
+    color TEXT_R, TEXT_G, TEXT_B
+    pos rx + 22, ry + 8
+    mes "走る"
+
+    ; リセットボタン
+    sx = 300 : sy = 360
+    color 60, 40, 40
+    boxf sx, sy, sx + 100, sy + 36
+    color TEXT_R, TEXT_G, TEXT_B
+    pos sx + 12, sy + 8
+    mes "リセット"
+    return
+
+; --- 入力 ---
+*handle_input
+    stick key, 256
+    mx = mousex : my = mousey
+
+    ; スライダードラッグ
+    if key & 256 {
+        if dragging_slider < 0 {
+            ; 新規ドラッグ開始判定
+            repeat SLIDER_COUNT
+                sy = slider_y(cnt)
+                if mx >= SLIDER_X && mx <= SLIDER_X + SLIDER_W {
+                    if my >= sy - 5 && my <= sy + SLIDER_H + 5 {
+                        dragging_slider = cnt
+                        break
+                    }
+                }
+            loop
+
+            ; ボタン判定
+            ; 歩く
+            if mx >= 60 && mx <= 160 && my >= 360 && my <= 396 {
+                person_speed = 0
+                is_moving = 1
+                person_x = 60
+            }
+            ; 走る
+            if mx >= 180 && mx <= 280 && my >= 360 && my <= 396 {
+                person_speed = 1
+                is_moving = 1
+                person_x = 60
+            }
+            ; リセット
+            if mx >= 300 && mx <= 400 && my >= 360 && my <= 396 {
+                person_x = 60
+                is_moving = 0
+            }
+        }
+    } else {
+        dragging_slider = -1
+    }
+
+    ; スライダー値更新
+    if dragging_slider >= 0 {
+        si = dragging_slider
+        ratio = mx - SLIDER_X
+        if ratio < 0 : ratio = 0
+        if ratio > SLIDER_W : ratio = SLIDER_W
+        slider_val(si) = slider_min(si) + ratio * (slider_max(si) - slider_min(si)) / SLIDER_W
+    }
+
+    ; スライダー値をパラメータに反映
+    distance = slider_val(0)
+    rain_rate = slider_val(1)
+    body_width = slider_val(2)
+    body_height = slider_val(3)
+    return
+
+; --- 更新 ---
+*update
+    if is_moving {
+        if person_speed == 0 {
+            person_x += 1
+        } else {
+            person_x += 3
+        }
+        goal_x = SIM_RIGHT - 40
+        if person_x >= goal_x {
+            person_x = goal_x
+            is_moving = 0
+        }
+    }
+    return

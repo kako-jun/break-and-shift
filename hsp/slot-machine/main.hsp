@@ -1,0 +1,439 @@
+; ============================================================
+; スロットマシン — 結果は最初から決まっている
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/reel_7.png (セブン図柄)
+;   res/reel_bar.png (BAR図柄)
+;   res/reel_cherry.png (チェリー図柄)
+;   res/reel_star.png (スター図柄)
+;   res/reel_watermelon.png (スイカ図柄)
+;   res/frame.png (筐体フレーム)
+;   res/spin.mp3 (リール回転SE)
+;   res/stop.mp3 (リール停止SE)
+;   res/win.mp3 (当たりSE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+#const REEL_COUNT 3
+#const SYMBOL_COUNT 5
+#const REEL_W 120
+#const REEL_H 280
+#const REEL_TOP 120
+#const CELL_H 56
+
+; 状態
+#const ST_IDLE 0
+#const ST_SPINNING 1
+#const ST_STOPPING 2
+
+; 色
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+state = ST_IDLE
+
+; リール結果（先に決まる！）
+dim final_sym, REEL_COUNT    ; 確定出目 (0-4)
+dim reel_pos, REEL_COUNT     ; 表示位置（スクロールオフセット）
+dim reel_speed, REEL_COUNT   ; 回転速度
+dim reel_stopped, REEL_COUNT ; 停止済みフラグ
+dim stop_timer, REEL_COUNT   ; 停止までのカウンタ
+
+; シンボル名
+sdim sym_name, 4, SYMBOL_COUNT
+sym_name(0) = "７"
+sym_name(1) = "Ｂ"
+sym_name(2) = "Ｃ"
+sym_name(3) = "☆"
+sym_name(4) = "Ｗ"
+
+; シンボル色
+dim sym_r, SYMBOL_COUNT
+dim sym_g, SYMBOL_COUNT
+dim sym_b, SYMBOL_COUNT
+sym_r(0) = 255 : sym_g(0) = 60  : sym_b(0) = 60   ; 7: 赤
+sym_r(1) = 200 : sym_g(1) = 180 : sym_b(1) = 80    ; B: 金
+sym_r(2) = 220 : sym_g(2) = 80  : sym_b(2) = 160   ; C: ピンク
+sym_r(3) = 255 : sym_g(3) = 255 : sym_b(3) = 100   ; ☆: 黄
+sym_r(4) = 80  : sym_g(4) = 200 : sym_b(4) = 80    ; W: 緑
+
+; 統計
+total_spins = 0
+total_wins = 0
+near_misses = 0
+credits = 100
+is_win = 0
+win_flash = 0
+
+; メッセージ
+sdim msg, 128
+msg = "コインを入れてレバーを引こう"
+
+; ボタン
+spin_bx = 340 : spin_by = 440
+spin_bw = 120 : spin_bh = 40
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 10
+    mes "スロットマシン — 回る前から結果は決まっている"
+
+    ; 筐体
+    gosub *draw_frame
+
+    ; リール描画
+    gosub *draw_reels
+
+    ; ペイライン
+    gosub *draw_payline
+
+    ; ボタン
+    gosub *draw_buttons
+
+    ; 統計
+    gosub *draw_stats
+
+    ; メッセージ
+    gosub *draw_message
+
+    ; 更新
+    gosub *update
+
+    ; 入力
+    gosub *handle_input
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- 筐体描画 ---
+*draw_frame
+    ; 外枠
+    color 50, 55, 70
+    ; 上
+    boxf 180, REEL_TOP - 20, 620, REEL_TOP - 16
+    ; 下
+    boxf 180, REEL_TOP + REEL_H, 620, REEL_TOP + REEL_H + 4
+    ; 左
+    boxf 180, REEL_TOP - 20, 184, REEL_TOP + REEL_H + 4
+    ; 右
+    boxf 616, REEL_TOP - 20, 620, REEL_TOP + REEL_H + 4
+    ; リール間仕切り
+    color 40, 44, 55
+    boxf 324, REEL_TOP, 328, REEL_TOP + REEL_H
+    boxf 472, REEL_TOP, 476, REEL_TOP + REEL_H
+
+    ; 装飾ランプ（上部）
+    if is_win && (win_flash \ 10) < 5 {
+        color 255, 220, 60
+    } else {
+        color 60, 55, 50
+    }
+    repeat 8
+        lx = 210 + cnt * 52
+        circle lx, REEL_TOP - 40, lx + 12, REEL_TOP - 28, 1
+    loop
+    return
+
+; --- リール描画 ---
+*draw_reels
+    repeat REEL_COUNT
+        rx = 192 + cnt * 148
+        ry = REEL_TOP
+
+        ; リール背景
+        color 15, 18, 28
+        boxf rx, ry, rx + REEL_W, ry + REEL_H
+
+        ; シンボル5つ分を描画
+        if reel_stopped(cnt) == 1 || state == ST_IDLE {
+            ; 停止中 — 確定出目の周辺を表示
+            center_sym = final_sym(cnt)
+            repeat 5
+                si = (center_sym + cnt - 2 + SYMBOL_COUNT * 10) \ SYMBOL_COUNT
+                sy = ry + cnt * CELL_H
+                if sy >= ry && sy + CELL_H <= ry + REEL_H {
+                    color sym_r(si), sym_g(si), sym_b(si)
+                    font "MS Gothic", 36
+                    pos rx + 40, sy + 8
+                    mes sym_name(si)
+                }
+            loop
+        } else {
+            ; 回転中 — オフセットに応じて表示
+            reel_pos(cnt) = (reel_pos(cnt) + reel_speed(cnt)) \ (CELL_H * SYMBOL_COUNT)
+            repeat 6
+                si = (cnt + reel_pos(cnt) / CELL_H) \ SYMBOL_COUNT
+                sy = ry + cnt * CELL_H - (reel_pos(cnt) \ CELL_H)
+                if sy >= ry - CELL_H && sy < ry + REEL_H {
+                    color sym_r(si), sym_g(si), sym_b(si)
+                    font "MS Gothic", 36
+                    pos rx + 40, sy + 8
+                    mes sym_name(si)
+                }
+            loop
+        }
+    loop
+    return
+
+; --- ペイライン ---
+*draw_payline
+    ; 中央ライン
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    py = REEL_TOP + CELL_H * 2 + CELL_H / 2
+    line 186, py, 618, py
+    ; 矢印
+    pos 170, py - 8
+    font "MS Gothic", 14
+    mes "▶"
+    return
+
+; --- ボタン描画 ---
+*draw_buttons
+    ; スピンボタン
+    if state == ST_IDLE && credits > 0 {
+        color 120, 50, 50
+    } else {
+        color 50, 40, 40
+    }
+    boxf spin_bx, spin_by, spin_bx + spin_bw, spin_by + spin_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos spin_bx + 18, spin_by + 9
+    if state == ST_IDLE {
+        mes "スピン！"
+    } else {
+        mes "回転中…"
+    }
+
+    ; クレジット表示
+    color 255, 220, 80
+    font "MS Gothic", 16
+    pos spin_bx - 10, spin_by + 50
+    mes "クレジット: " + credits
+    return
+
+; --- 統計描画 ---
+*draw_stats
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+    sx = 20 : sy = 120
+
+    pos sx, sy
+    mes "回転数: " + total_spins
+    pos sx, sy + 20
+    mes "当たり: " + total_wins
+    pos sx, sy + 40
+    if total_spins > 0 {
+        win_pct = total_wins * 100 / total_spins
+        mes "勝率: " + win_pct + "%"
+    } else {
+        mes "勝率: ---"
+    }
+
+    pos sx, sy + 70
+    mes "ニアミス: " + near_misses
+    pos sx, sy + 90
+    if total_spins > 0 {
+        nm_pct = near_misses * 100 / total_spins
+        mes "ニアミス率: " + nm_pct + "%"
+    } else {
+        mes "ニアミス率: ---"
+    }
+
+    ; 解説（一定回数後に表示）
+    if total_spins >= 10 {
+        color ACCENT_R, ACCENT_G, ACCENT_B
+        font "MS Gothic", 12
+        pos sx, sy + 130
+        mes "【仕組み】"
+        pos sx, sy + 148
+        mes "結果はスピン時に即決定。"
+        pos sx, sy + 166
+        mes "リール演出は「見せ方」に過ぎない。"
+        pos sx, sy + 184
+        mes "ニアミスは意図的に30%発生。"
+        pos sx, sy + 202
+        mes "「惜しかった」は錯覚です。"
+    }
+    return
+
+; --- メッセージ ---
+*draw_message
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 16
+    pos 200, 500
+    mes msg
+    return
+
+; --- 更新 ---
+*update
+    if is_win {
+        win_flash++
+        if win_flash > 60 : is_win = 0
+    }
+
+    if state == ST_SPINNING {
+        ; 各リールの停止タイマーを減らす
+        all_stopped = 1
+        repeat REEL_COUNT
+            if reel_stopped(cnt) == 0 {
+                stop_timer(cnt)--
+                if stop_timer(cnt) <= 0 {
+                    reel_stopped(cnt) = 1
+                    reel_speed(cnt) = 0
+                } else {
+                    all_stopped = 0
+                    ; 停止直前に減速
+                    if stop_timer(cnt) < 15 {
+                        reel_speed(cnt) = reel_speed(cnt) / 2
+                        if reel_speed(cnt) < 2 : reel_speed(cnt) = 2
+                    }
+                }
+            }
+        loop
+
+        if all_stopped {
+            state = ST_IDLE
+            ; 判定
+            if final_sym(0) == final_sym(1) && final_sym(1) == final_sym(2) {
+                ; 3つ揃い！
+                total_wins++
+                is_win = 1
+                win_flash = 0
+                if final_sym(0) == 0 {
+                    credits += 1000
+                    msg = "★★★ 777 大当たり！ +1000 ★★★"
+                } else {
+                    if final_sym(0) == 1 {
+                        credits += 300
+                        msg = "★★ star 3揃い！ +300 ★★"
+                    } else {
+                        if final_sym(0) == 2 {
+                            credits += 100
+                            msg = "★ bell 3揃い！ +100 ★"
+                        } else {
+                            credits += 50
+                            msg = "☆ cherry 3揃い！ +50 ☆"
+                        }
+                    }
+                }
+            } else {
+                ; ニアミスチェック
+                if final_sym(0) == final_sym(1) || final_sym(1) == final_sym(2) {
+                    near_misses++
+                    msg = "惜しい！あと1つだった…"
+                } else {
+                    msg = "ハズレ…"
+                }
+            }
+        }
+    }
+    return
+
+; --- 入力 ---
+*handle_input
+    stick key, 256
+    if key & 256 {
+        mx = mousex : my = mousey
+        if state == ST_IDLE && credits > 0 {
+            if mx >= spin_bx && mx <= spin_bx + spin_bw {
+                if my >= spin_by && my <= spin_by + spin_bh {
+                    gosub *do_spin
+                }
+            }
+        }
+    }
+    return
+
+; --- スピン実行 ---
+*do_spin
+    credits -= 1
+    total_spins++
+    state = ST_SPINNING
+    msg = "回転中…結果はもう決まっています"
+
+    ; === 核心: 結果を先に決定する ===
+    ; ページの理論確率に合わせる:
+    ;   777: 0.1% (1000倍) / star: 0.5% (300倍) / bell: 2% (100倍) / cherry: 5% (50倍)
+    ;   ニアミス: 30% / ハズレ: 62.4%
+    roll = rnd(1000)
+    if roll < 1 {
+        ; 0.1%: 777 大当たり
+        final_sym(0) = 0 : final_sym(1) = 0 : final_sym(2) = 0
+    } else {
+        if roll < 6 {
+            ; 0.5%: star 3揃い (シンボル1)
+            final_sym(0) = 1 : final_sym(1) = 1 : final_sym(2) = 1
+        } else {
+            if roll < 26 {
+                ; 2%: bell 3揃い (シンボル2)
+                final_sym(0) = 2 : final_sym(1) = 2 : final_sym(2) = 2
+            } else {
+                if roll < 76 {
+                    ; 5%: cherry 3揃い (シンボル3)
+                    final_sym(0) = 3 : final_sym(1) = 3 : final_sym(2) = 3
+                } else {
+                    if roll < 376 {
+                        ; 30%: ニアミス（2つ揃い + 1つ違う）
+                        s = rnd(SYMBOL_COUNT)
+                        pair_pos = rnd(2)
+                        if pair_pos == 0 {
+                            final_sym(0) = s
+                            final_sym(1) = s
+                            final_sym(2) = (s + rnd(4) + 1) \ SYMBOL_COUNT
+                        } else {
+                            final_sym(0) = (s + rnd(4) + 1) \ SYMBOL_COUNT
+                            final_sym(1) = s
+                            final_sym(2) = s
+                        }
+                    } else {
+                        ; 62.4%: 完全ハズレ
+                        final_sym(0) = rnd(SYMBOL_COUNT)
+                        final_sym(1) = (final_sym(0) + rnd(3) + 1) \ SYMBOL_COUNT
+                        final_sym(2) = rnd(SYMBOL_COUNT)
+                        if final_sym(2) == final_sym(0) || final_sym(2) == final_sym(1) {
+                            final_sym(2) = (final_sym(2) + 1) \ SYMBOL_COUNT
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ; リール回転開始
+    repeat REEL_COUNT
+        reel_stopped(cnt) = 0
+        reel_speed(cnt) = 12 + rnd(6)
+        reel_pos(cnt) = rnd(CELL_H * SYMBOL_COUNT)
+        stop_timer(cnt) = 30 + cnt * 25 + rnd(10)
+    loop
+    return

@@ -1,0 +1,399 @@
+name: Build HSP experiments
+
+on:
+  push:
+    paths:
+      - 'hsp/**'
+      - '.github/workflows/build-hsp.yml'
+  pull_request:
+    paths:
+      - 'hsp/**'
+  workflow_dispatch:
+
+env:
+  # OpenHSP v3.7 release (contains hspcmp.exe, common/, hsp3dish.js runtime)
+  HSP_RELEASE_URL: https://github.com/onitama/OpenHSP/releases/download/v3.7/hsp37en.zip
+  # Emscripten version (needed for file_packager.py to create .data bundles)
+  EM_VERSION: '3.1.74'
+  EM_CACHE_FOLDER: 'emsdk-cache'
+
+jobs:
+  # ---------------------------------------------------------------
+  # Step 1: Build hsp3dish.js runtime from OpenHSP source
+  # The release ZIP is a Windows GUI distribution and may not include
+  # the Emscripten-built hsp3dish.js + .wasm. We build from source.
+  # ---------------------------------------------------------------
+  build-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache runtime artifacts
+        id: cache-runtime
+        uses: actions/cache@v4
+        with:
+          path: runtime-out
+          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}
+
+      - name: Checkout OpenHSP
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: onitama/OpenHSP
+          ref: v3.7
+          path: OpenHSP
+
+      - name: Setup Emscripten
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+          actions-cache-folder: ${{ env.EM_CACHE_FOLDER }}
+
+      - name: Build hsp3dish.js
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        working-directory: OpenHSP
+        run: make -f makefile.emscripten -j$(nproc)
+
+      - name: Collect runtime files
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p runtime-out
+          cp OpenHSP/hsp3dish.js runtime-out/
+          cp OpenHSP/hsp3dish.wasm runtime-out/
+          ls -la runtime-out/
+
+      - name: Upload runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsp3dish-runtime
+          path: runtime-out/
+
+  # ---------------------------------------------------------------
+  # Step 2: Compile each HSP experiment
+  # Uses Windows runner for hspcmp.exe (native Win32 compiler).
+  # Then uses Emscripten file_packager to create .data bundles.
+  # ---------------------------------------------------------------
+  build:
+    needs: build-runtime
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        experiment:
+          - chinchirorin
+          - claw-machine
+          - slot-machine
+          - janken
+          - rain-walk
+          - survivor-bias
+          - ancestor-probability
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download hsp3dish.js runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: hsp3dish-runtime
+          path: runtime
+
+      # --- Get HSP compiler (hspcmp.exe) from release ---
+      - name: Cache HSP release
+        id: cache-hsp
+        uses: actions/cache@v4
+        with:
+          path: hsp3
+          key: hsp37en-release-v3.7
+
+      - name: Download and extract HSP3.7 release
+        if: steps.cache-hsp.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Downloading OpenHSP v3.7 release..."
+          Invoke-WebRequest -Uri "$env:HSP_RELEASE_URL" -OutFile hsp37en.zip
+          Write-Host "Extracting..."
+          Expand-Archive -Path hsp37en.zip -DestinationPath hsp3-extract -Force
+          # The ZIP may extract to a subdirectory; find hspcmp.exe
+          $hspcmp = Get-ChildItem -Path hsp3-extract -Recurse -Filter "hspcmp.exe" | Select-Object -First 1
+          if (-not $hspcmp) {
+            Write-Error "hspcmp.exe not found in release ZIP!"
+            # Fallback: build from source in next step
+            exit 1
+          }
+          $hspRoot = $hspcmp.Directory.FullName
+          Write-Host "Found HSP root at: $hspRoot"
+
+          # Copy necessary files to hsp3/
+          New-Item -ItemType Directory -Force -Path hsp3
+          Copy-Item "$hspRoot/hspcmp.exe" "hsp3/"
+          # Copy common/ directory (contains hspdef.as and other standard includes)
+          if (Test-Path "$hspRoot/common") {
+            Copy-Item -Recurse "$hspRoot/common" "hsp3/common"
+          } elseif (Test-Path "$hspRoot/../common") {
+            Copy-Item -Recurse "$hspRoot/../common" "hsp3/common"
+          }
+
+          # Also look for hsp3dish runtime in the release (backup plan)
+          $dishJs = Get-ChildItem -Path hsp3-extract -Recurse -Filter "hsp3dish.js" | Select-Object -First 1
+          if ($dishJs) {
+            Copy-Item $dishJs.FullName "hsp3/"
+            $dishWasm = Get-ChildItem -Path $dishJs.Directory -Filter "hsp3dish.wasm" | Select-Object -First 1
+            if ($dishWasm) { Copy-Item $dishWasm.FullName "hsp3/" }
+          }
+
+          # Cleanup
+          Remove-Item -Recurse hsp3-extract -ErrorAction SilentlyContinue
+          Remove-Item hsp37en.zip -ErrorAction SilentlyContinue
+
+          Write-Host "HSP3 directory contents:"
+          Get-ChildItem hsp3/ | Format-Table Name, Length
+
+      # --- Setup Python (needed for file_packager.py) ---
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # --- Setup Emscripten (needed for file_packager.py) ---
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EM_VERSION }}
+          actions-cache-folder: ${{ env.EM_CACHE_FOLDER }}
+
+      # --- Compile .hsp -> .ax and bundle ---
+      - name: Compile ${{ matrix.experiment }}
+        shell: pwsh
+        run: |
+          $exp = "${{ matrix.experiment }}"
+          $srcDir = "hsp/$exp"
+          $outDir = "public/hsp/$exp"
+
+          New-Item -ItemType Directory -Force -Path $outDir
+
+          if (-not (Test-Path "$srcDir/main.hsp")) {
+            Write-Host "::warning::No main.hsp found for $exp, skipping"
+            exit 0
+          }
+
+          Write-Host "=== Compiling $exp ==="
+
+          # -------------------------------------------
+          # 1. Compile main.hsp -> start.ax using hspcmp.exe
+          # -------------------------------------------
+          # hspcmp options:
+          #   -ostart.ax  : output filename
+          #   -d          : include debug info (remove for release)
+          #   -i          : input is UTF-8
+          #   -u          : output UTF-8 strings
+          #   --compath=  : path to common/ includes
+          $commonPath = (Resolve-Path "hsp3/common/").Path
+          # Ensure trailing backslash for Windows
+          if (-not $commonPath.EndsWith("\")) { $commonPath += "\" }
+
+          # hspcmp requires being run from the source directory context
+          # so that #include relative paths work
+          Push-Location $srcDir
+          $hspcmpPath = (Resolve-Path "../../hsp3/hspcmp.exe").Path
+
+          Write-Host "Running: $hspcmpPath -ostart.ax -i -u --compath=$commonPath main.hsp"
+          & $hspcmpPath -ostart.ax -i -u "--compath=$commonPath" main.hsp
+          $compileResult = $LASTEXITCODE
+
+          if ($compileResult -ne 0) {
+            Write-Error "Compilation failed for $exp (exit code: $compileResult)"
+            Pop-Location
+            exit 1
+          }
+
+          if (-not (Test-Path "start.ax")) {
+            Write-Error "start.ax was not generated for $exp"
+            Pop-Location
+            exit 1
+          }
+
+          Write-Host "start.ax generated successfully ($($(Get-Item start.ax).Length) bytes)"
+          Pop-Location
+
+          # -------------------------------------------
+          # 2. Prepare data directory for file_packager
+          # -------------------------------------------
+          # Emscripten's file_packager bundles files into a .data file
+          # that gets loaded into the virtual filesystem.
+          # hsp3dish.js expects to find start.ax in the root of the VFS.
+          $dataStage = "staging/$exp"
+          New-Item -ItemType Directory -Force -Path $dataStage
+
+          # Copy compiled bytecode
+          Copy-Item "$srcDir/start.ax" "$dataStage/"
+
+          # Copy resource files (images, sounds, etc.)
+          if (Test-Path "$srcDir/res") {
+            $resFiles = Get-ChildItem "$srcDir/res" -File
+            foreach ($f in $resFiles) {
+              Copy-Item $f.FullName "$dataStage/"
+            }
+          }
+
+          # Copy common assets if the project has a hsp/common directory
+          if (Test-Path "hsp/common") {
+            $commonFiles = Get-ChildItem "hsp/common" -File
+            foreach ($f in $commonFiles) {
+              if (-not (Test-Path "$dataStage/$($f.Name)")) {
+                Copy-Item $f.FullName "$dataStage/"
+              }
+            }
+          }
+
+          Write-Host "Data staging directory contents:"
+          Get-ChildItem $dataStage | Format-Table Name, Length
+
+          # -------------------------------------------
+          # 3. Create .data bundle with file_packager.py
+          # -------------------------------------------
+          # file_packager.py creates two files:
+          #   - <name>.data : the binary data bundle
+          #   - <name>.js   : JS loader that registers files in Emscripten VFS
+          #
+          # The JS loader must be included BEFORE hsp3dish.js in the HTML.
+          # Use EMSDK env var set by mymindstorm/setup-emsdk
+          $emsdkRoot = $env:EMSDK
+          $filePackager = "$emsdkRoot/upstream/emscripten/tools/file_packager.py"
+          if (-not (Test-Path $filePackager)) {
+            # Another common location
+            $filePackager = (Get-Command "emcc" -ErrorAction SilentlyContinue).Source | Split-Path
+            $filePackager = "$filePackager/tools/file_packager.py"
+          }
+          if (-not (Test-Path $filePackager)) {
+            # Last resort: find it
+            $fpFound = Get-ChildItem -Path $env:EMSDK -Recurse -Filter "file_packager.py" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($fpFound) {
+              $filePackager = $fpFound.FullName
+            } else {
+              Write-Error "Cannot find file_packager.py!"
+              exit 1
+            }
+          }
+
+          Write-Host "Using file_packager: $filePackager"
+
+          # Run file_packager
+          # --preload staging/exp@/ maps the staging dir contents to VFS root /
+          python $filePackager `
+            "$outDir/$exp.data" `
+            --preload "$dataStage@/" `
+            --js-output="$outDir/$exp.js" `
+            --no-node
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "file_packager failed for $exp"
+            exit 1
+          }
+
+          Write-Host "$exp.data created ($($(Get-Item "$outDir/$exp.data").Length) bytes)"
+
+          # -------------------------------------------
+          # 4. Copy hsp3dish.js runtime
+          # -------------------------------------------
+          # Prefer the Emscripten-built runtime from the build-runtime job
+          if (Test-Path "runtime/hsp3dish.js") {
+            Copy-Item "runtime/hsp3dish.js" "$outDir/"
+            if (Test-Path "runtime/hsp3dish.wasm") {
+              Copy-Item "runtime/hsp3dish.wasm" "$outDir/"
+            }
+          } elseif (Test-Path "hsp3/hsp3dish.js") {
+            # Fallback: from the release ZIP
+            Copy-Item "hsp3/hsp3dish.js" "$outDir/"
+            if (Test-Path "hsp3/hsp3dish.wasm") {
+              Copy-Item "hsp3/hsp3dish.wasm" "$outDir/"
+            }
+          } else {
+            Write-Error "hsp3dish.js runtime not found!"
+            exit 1
+          }
+
+          # -------------------------------------------
+          # 5. Generate index.html from template
+          # -------------------------------------------
+          $template = Get-Content "hsp/template/index.html" -Raw
+
+          # Read resolution from hsp source or use defaults
+          # TODO: Parse hsp3dish.ini if it exists in the experiment dir
+          $hspWx = "800"
+          $hspWy = "600"
+          $hspSx = "800"
+          $hspSy = "600"
+          $autoScale = "0"
+
+          # Check for a config file that overrides defaults
+          if (Test-Path "$srcDir/hsp3dish.ini") {
+            $ini = Get-Content "$srcDir/hsp3dish.ini"
+            foreach ($line in $ini) {
+              if ($line -match "^wx=(\d+)") { $hspWx = $Matches[1] }
+              if ($line -match "^wy=(\d+)") { $hspWy = $Matches[1] }
+              if ($line -match "^sx=(\d+)") { $hspSx = $Matches[1] }
+              if ($line -match "^sy=(\d+)") { $hspSy = $Matches[1] }
+              if ($line -match "^autoscale=(\d+)") { $autoScale = $Matches[1] }
+            }
+          }
+
+          # Pretty title from experiment name
+          $title = ($exp -replace '-', ' ').ToUpper().Substring(0,1) + ($exp -replace '-', ' ').Substring(1)
+
+          $html = $template `
+            -replace '{{TITLE}}', $title `
+            -replace '{{EXPERIMENT}}', $exp `
+            -replace '{{HSP_WX}}', $hspWx `
+            -replace '{{HSP_WY}}', $hspWy `
+            -replace '{{HSP_SX}}', $hspSx `
+            -replace '{{HSP_SY}}', $hspSy `
+            -replace '{{HSP_AUTOSCALE}}', $autoScale
+
+          $html | Set-Content "$outDir/index.html" -Encoding UTF8
+
+          # -------------------------------------------
+          # Summary
+          # -------------------------------------------
+          Write-Host ""
+          Write-Host "=== Build complete for $exp ==="
+          Write-Host "Output files:"
+          Get-ChildItem $outDir | Format-Table Name, Length
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsp-${{ matrix.experiment }}
+          path: public/hsp/${{ matrix.experiment }}/
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------
+  # Step 3: Merge all experiment artifacts into one
+  # ---------------------------------------------------------------
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: merged
+          pattern: hsp-*
+          merge-multiple: false
+
+      - name: Organize output
+        run: |
+          mkdir -p output/hsp
+          for dir in merged/hsp-*/; do
+            exp=$(basename "$dir" | sed 's/^hsp-//')
+            if [ -d "$dir" ] && [ "$(ls -A "$dir")" ]; then
+              cp -r "$dir" "output/hsp/$exp"
+              echo "Merged: $exp"
+            fi
+          done
+          echo "=== Final structure ==="
+          find output -type f | head -50
+
+      - name: Upload merged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hsp-all-experiments
+          path: output/

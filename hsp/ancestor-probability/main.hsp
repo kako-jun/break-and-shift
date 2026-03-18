@@ -1,0 +1,524 @@
+; ============================================================
+; 先祖の数の爆発 — 30世代前の矛盾
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/person_icon.png (人物アイコン)
+;   res/tree_bg.png (系図背景)
+;   res/expand.mp3 (展開SE)
+;   res/alert.mp3 (矛盾発覚SE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+#const MAX_GEN 35
+#const TREE_TOP 90
+#const TREE_LEFT 40
+#const TREE_RIGHT 760
+#const NODE_R 8
+
+; 色
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+current_gen = 0        ; 現在表示中の世代数
+target_gen = 0         ; 目標世代数
+anim_progress = 0      ; アニメーション進捗 (0-100)
+scroll_y = 0           ; スクロールオフセット
+
+; 世代データ（文字列で数値を保持 — 巨大数対応）
+; 2^N を計算で出す。HSPの整数制限内で動作
+dim ancestor_count, MAX_GEN + 1   ; 2^N（31ビット制限に注意）
+dim year_approx, MAX_GEN + 1     ; おおよその年代
+dim world_pop, MAX_GEN + 1       ; その年代の推定世界人口（百万人）
+sdim count_str, 32, MAX_GEN + 1  ; 表示用文字列
+
+; 初期化
+ancestor_count(0) = 1
+count_str(0) = "1"
+year_approx(0) = 2025
+world_pop(0) = 8000  ; 80億（百万人単位）
+
+; 各世代を事前計算
+gosub *precalc_generations
+
+; ボタン
+add_bx = 550 : add_by = 520
+add_bw = 100 : add_bh = 40
+sub_bx = 430 : sub_by = 520
+sub_bw = 100 : sub_bh = 40
+reset_bx = 670 : reset_by = 520
+reset_bw = 100 : reset_bh = 40
+
+; スクロールボタン
+scroll_up_bx = 750 : scroll_up_by = 100
+scroll_dn_bx = 750 : scroll_dn_by = 450
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 10
+    mes "先祖の数 — 2のN乗の爆発"
+
+    ; 副題
+    font "MS Gothic", 13
+    pos 20, 36
+    mes "世代を遡るごとに先祖の数は倍増する。ある時点で世界人口を超える矛盾とは？"
+
+    ; ツリー描画
+    gosub *draw_tree
+
+    ; 情報パネル
+    gosub *draw_info_panel
+
+    ; ボタン
+    gosub *draw_buttons
+
+    ; 入力
+    gosub *handle_input
+
+    ; アニメーション更新
+    gosub *update
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- 世代事前計算 ---
+*precalc_generations
+    ; 2^N の計算（整数範囲内で）
+    v = 1
+    repeat MAX_GEN
+        i = cnt + 1
+        if v < 1073741824 {  ; 2^30 未満なら倍にできる
+            v = v * 2
+            ancestor_count(i) = v
+        } else {
+            ancestor_count(i) = -1  ; オーバーフロー（表示用文字列で対処）
+        }
+    loop
+
+    ; 表示用文字列
+    count_str(0)  = "1 (あなた)"
+    count_str(1)  = "2"
+    count_str(2)  = "4"
+    count_str(3)  = "8"
+    count_str(4)  = "16"
+    count_str(5)  = "32"
+    count_str(6)  = "64"
+    count_str(7)  = "128"
+    count_str(8)  = "256"
+    count_str(9)  = "512"
+    count_str(10) = "1,024"
+    count_str(11) = "2,048"
+    count_str(12) = "4,096"
+    count_str(13) = "8,192"
+    count_str(14) = "16,384"
+    count_str(15) = "32,768"
+    count_str(16) = "65,536"
+    count_str(17) = "131,072"
+    count_str(18) = "262,144"
+    count_str(19) = "524,288"
+    count_str(20) = "1,048,576"
+    count_str(21) = "2,097,152"
+    count_str(22) = "4,194,304"
+    count_str(23) = "8,388,608"
+    count_str(24) = "16,777,216"
+    count_str(25) = "33,554,432"
+    count_str(26) = "67,108,864"
+    count_str(27) = "134,217,728"
+    count_str(28) = "268,435,456"
+    count_str(29) = "536,870,912"
+    count_str(30) = "1,073,741,824"
+    count_str(31) = "2,147,483,648"
+    count_str(32) = "4,294,967,296"
+    count_str(33) = "8,589,934,592"
+    count_str(34) = "17,179,869,184"
+    count_str(35) = "34,359,738,368"
+
+    ; 年代（1世代≒25年として遡る）
+    repeat MAX_GEN + 1
+        year_approx(cnt) = 2025 - cnt * 25
+    loop
+
+    ; 世界人口（百万人単位、大雑把な推定）
+    world_pop(0)  = 8000    ; 2025: 80億
+    world_pop(1)  = 7800    ; 2000
+    world_pop(2)  = 6000    ; 1975
+    world_pop(3)  = 4400    ; 1950
+    world_pop(4)  = 3700    ; 1925
+    world_pop(5)  = 2500    ; 1900
+    world_pop(6)  = 1800    ; 1875
+    world_pop(7)  = 1400    ; 1850
+    world_pop(8)  = 1200    ; 1825
+    world_pop(9)  = 1000    ; 1800
+    world_pop(10) = 900     ; 1775
+    world_pop(11) = 800     ; 1750
+    world_pop(12) = 700     ; 1725
+    world_pop(13) = 600     ; 1700
+    world_pop(14) = 550     ; 1675
+    world_pop(15) = 500     ; 1650
+    world_pop(16) = 500     ; 1625
+    world_pop(17) = 500     ; 1600
+    world_pop(18) = 450     ; 1575
+    world_pop(19) = 400     ; 1550
+    world_pop(20) = 400     ; 1525
+    world_pop(21) = 380     ; 1500
+    world_pop(22) = 350     ; 1475
+    world_pop(23) = 350     ; 1450
+    world_pop(24) = 300     ; 1425
+    world_pop(25) = 350     ; 1400
+    world_pop(26) = 380     ; 1375
+    world_pop(27) = 400     ; 1350 (ペスト前)
+    world_pop(28) = 360     ; 1325
+    world_pop(29) = 320     ; 1300
+    world_pop(30) = 300     ; 1275
+    world_pop(31) = 280     ; 1250
+    world_pop(32) = 260     ; 1225
+    world_pop(33) = 250     ; 1200
+    world_pop(34) = 230     ; 1175
+    world_pop(35) = 210     ; 1150
+    return
+
+; --- ツリー描画 ---
+*draw_tree
+    ; 描画範囲
+    ty_start = TREE_TOP - scroll_y
+    row_h = 36
+
+    ; 「あなた」のノード
+    if ty_start >= TREE_TOP - 10 && ty_start < 480 {
+        color ACCENT_R, ACCENT_G, ACCENT_B
+        cx = 400
+        cy = ty_start
+        circle cx - NODE_R, cy - NODE_R, cx + NODE_R, cy + NODE_R, 1
+        color TEXT_R, TEXT_G, TEXT_B
+        font "MS Gothic", 11
+        pos cx + 14, cy - 6
+        mes "あなた"
+    }
+
+    ; 各世代を描画
+    repeat current_gen
+        gi = cnt + 1
+        gy = ty_start + gi * row_h
+
+        ; 画面外ならスキップ
+        if gy < TREE_TOP - 20 : continue
+        if gy > 490 : break
+
+        ; この世代のノード数
+        ; 表示制限: 最大32個まで描画
+        draw_count = 1
+        repeat gi
+            draw_count = draw_count * 2
+            if draw_count > 32 : draw_count = 32 : break
+        loop
+
+        ; ノード描画
+        spacing = (TREE_RIGHT - TREE_LEFT) / (draw_count + 1)
+        if spacing < 4 : spacing = 4
+
+        ; 超過フラグ
+        exceeded = 0
+        if ancestor_count(gi) > 0 {
+            if ancestor_count(gi) > world_pop(gi) * 1000000 {
+                exceeded = 1
+            }
+        }
+        ; 簡易判定: 世代20超で百万超え → 人口比チェック
+        if gi >= 20 : exceeded = 1
+
+        repeat draw_count
+            nx = TREE_LEFT + spacing * (cnt + 1)
+            if nx > TREE_RIGHT : break
+
+            ; ノード色
+            if exceeded {
+                ; 人口超過は赤系
+                color 180, 60, 60
+            } else {
+                color ACCENT_R, ACCENT_G, ACCENT_B
+            }
+
+            ; 小さな丸
+            nr = NODE_R
+            if draw_count > 16 : nr = 3
+            if draw_count > 24 : nr = 2
+            circle nx - nr, gy - nr, nx + nr, gy + nr, 1
+
+            ; 親からの線（1世代前のノードへ）
+            if gi > 0 {
+                parent_count = draw_count / 2
+                if parent_count < 1 : parent_count = 1
+                if parent_count > 32 : parent_count = 32
+                p_spacing = (TREE_RIGHT - TREE_LEFT) / (parent_count + 1)
+                if p_spacing < 4 : p_spacing = 4
+                pi = cnt / 2
+                if pi >= parent_count : pi = parent_count - 1
+                px = TREE_LEFT + p_spacing * (pi + 1)
+                py = gy - row_h
+
+                color 50, 55, 65
+                line nx, gy - nr, px, py + nr
+            }
+        loop
+
+        ; 世代ラベル（右端）
+        color TEXT_R, TEXT_G, TEXT_B
+        font "MS Gothic", 10
+        pos 5, gy - 5
+        mes "" + gi + "世代"
+    loop
+    return
+
+; --- 情報パネル ---
+*draw_info_panel
+    ; パネル背景
+    color 15, 18, 28
+    boxf 530, 70, 780, 500
+
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 15
+    pos 540, 80
+    mes "現在の世代: " + current_gen
+
+    ; 先祖数
+    font "MS Gothic", 13
+    pos 540, 110
+    mes "先祖の数:"
+    color 255, 220, 100
+    font "MS Gothic", 16
+    pos 540, 130
+    if current_gen >= 0 && current_gen <= MAX_GEN {
+        mes count_str(current_gen)
+    }
+
+    ; 年代
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+    pos 540, 160
+    if current_gen <= MAX_GEN {
+        mes "時代: 約" + year_approx(current_gen) + "年"
+    }
+
+    ; 世界人口
+    pos 540, 185
+    if current_gen <= MAX_GEN {
+        wp = world_pop(current_gen)
+        if wp >= 1000 {
+            mes "世界人口: 約" + (wp / 1000) + "0億人"
+        } else {
+            mes "世界人口: 約" + wp + "00万人"
+        }
+    }
+
+    ; 超過チェック
+    if current_gen >= 1 {
+        pos 540, 215
+        ; 先祖数 vs 世界人口（百万人単位で比較）
+        ac = ancestor_count(current_gen)
+        wp_abs = world_pop(current_gen)  ; 百万人単位
+
+        ; ac > wp_abs * 1000000 をチェック（整数オーバーフロー回避）
+        overflow_detected = 0
+        if current_gen >= 30 {
+            overflow_detected = 1
+        } else {
+            if ac > 0 && wp_abs > 0 {
+                if ac / 1000000 > wp_abs {
+                    overflow_detected = 1
+                }
+                ; もう少し細かく
+                if ac > wp_abs * 1000 {
+                    overflow_detected = 1
+                }
+            }
+        }
+
+        if overflow_detected {
+            color 255, 80, 80
+            font "MS Gothic", 14
+            mes "!! 世界人口を超過 !!"
+            pos 540, 238
+            font "MS Gothic", 12
+            mes "あなたの先祖が全人口より多い？"
+            pos 540, 256
+            mes "→ 先祖の重複が必ずある"
+        } else {
+            color 100, 200, 100
+            mes "人口内に収まっています"
+        }
+    }
+
+    ; 各世代のリスト
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 11
+    pos 540, 290
+    mes "─── 世代別一覧 ───"
+
+    list_start = 0
+    if current_gen > 10 : list_start = current_gen - 10
+
+    repeat 12
+        li = list_start + cnt
+        if li > current_gen : break
+        if li > MAX_GEN : break
+
+        ly = 310 + cnt * 15
+        if ly > 485 : break
+
+        ; 超過判定
+        if li >= 30 {
+            color 180, 80, 80
+        } else {
+            if li >= 20 {
+                color 180, 160, 80
+            } else {
+                color TEXT_R, TEXT_G, TEXT_B
+            }
+        }
+
+        pos 540, ly
+        mes "" + li + "世代: " + count_str(li)
+    loop
+    return
+
+; --- ボタン ---
+*draw_buttons
+    ; 減らすボタン
+    if current_gen > 0 {
+        color BTN_R, BTN_G, BTN_B
+    } else {
+        color 30, 35, 45
+    }
+    boxf sub_bx, sub_by, sub_bx + sub_bw, sub_by + sub_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 16
+    pos sub_bx + 20, sub_by + 10
+    mes "← 減らす"
+
+    ; 増やすボタン
+    if current_gen < MAX_GEN {
+        color 120, 80, 50
+    } else {
+        color 30, 35, 45
+    }
+    boxf add_bx, add_by, add_bx + add_bw, add_by + add_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    pos add_bx + 18, add_by + 10
+    mes "増やす →"
+
+    ; リセットボタン
+    color 60, 40, 40
+    boxf reset_bx, reset_by, reset_bx + reset_bw, reset_by + reset_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    pos reset_bx + 18, reset_by + 10
+    mes "リセット"
+
+    ; 世代数表示
+    color 255, 220, 100
+    font "MS Gothic", 24
+    pos 470, 565
+    mes "" + current_gen + " 世代前"
+
+    ; スクロールヒント
+    if current_gen > 10 {
+        color 80, 85, 95
+        font "MS Gothic", 11
+        pos 40, 490
+        mes "↑↓キーでスクロール"
+    }
+    return
+
+; --- 入力 ---
+*handle_input
+    stick key, 256 + 2 + 8  ; クリック + 上下キー
+    mx = mousex : my = mousey
+
+    ; 上下キーでスクロール
+    if key & 2 {  ; 上キー
+        scroll_y -= 10
+        if scroll_y < 0 : scroll_y = 0
+    }
+    if key & 8 {  ; 下キー
+        max_scroll = current_gen * 36 - 300
+        if max_scroll < 0 : max_scroll = 0
+        scroll_y += 10
+        if scroll_y > max_scroll : scroll_y = max_scroll
+    }
+
+    if key & 256 {
+        ; 増やすボタン
+        if mx >= add_bx && mx <= add_bx + add_bw {
+            if my >= add_by && my <= add_by + add_bh {
+                if current_gen < MAX_GEN {
+                    target_gen = current_gen + 1
+                    anim_progress = 0
+                }
+            }
+        }
+
+        ; 減らすボタン
+        if mx >= sub_bx && mx <= sub_bx + sub_bw {
+            if my >= sub_by && my <= sub_by + sub_bh {
+                if current_gen > 0 {
+                    current_gen--
+                    ; スクロールも調整
+                    max_scroll = current_gen * 36 - 300
+                    if max_scroll < 0 : max_scroll = 0
+                    if scroll_y > max_scroll : scroll_y = max_scroll
+                }
+            }
+        }
+
+        ; リセットボタン
+        if mx >= reset_bx && mx <= reset_bx + reset_bw {
+            if my >= reset_by && my <= reset_by + reset_bh {
+                current_gen = 0
+                target_gen = 0
+                scroll_y = 0
+            }
+        }
+    }
+    return
+
+; --- 更新 ---
+*update
+    if target_gen > current_gen {
+        anim_progress += 5
+        if anim_progress >= 100 {
+            current_gen = target_gen
+            anim_progress = 0
+            ; 自動スクロール
+            ideal_scroll = current_gen * 36 - 200
+            if ideal_scroll < 0 : ideal_scroll = 0
+            scroll_y = ideal_scroll
+        }
+    }
+    return

@@ -11,10 +11,16 @@ const chapters = [
   { id: 3, title: '第三章：進化のトーナメント', path: '/chapter3' },
   { id: 4, title: '第四章：ガチャの天井と煽り文句', path: '/chapter4' },
   { id: 5, title: '第五章：確率の森で迷う', path: '/chapter5' },
+  { id: 6, title: '特別編：チンチロリン', path: '/chinchirorin' },
+  { id: 7, title: '特別編：クレーンゲーム', path: '/claw-machine' },
+  { id: 8, title: '特別編：スロットマシン', path: '/slot-machine' },
+  { id: 9, title: '特別編：じゃんけん', path: '/janken' },
+  { id: 10, title: '特別編：雨の中の歩行', path: '/rain-walk' },
+  { id: 11, title: '特別編：生存者バイアス', path: '/survivor-bias' },
   {
-    id: 6,
-    title: '特別編：チンチロリン（3D物理演算）',
-    path: '/chinchirorin',
+    id: 12,
+    title: '特別編：先祖の確率',
+    path: '/ancestor-probability',
   },
 ];
 

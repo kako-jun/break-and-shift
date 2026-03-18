@@ -1,0 +1,432 @@
+; ============================================================
+; 生存者バイアス — 弾痕のない場所を装甲せよ
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/bomber_silhouette.png (爆撃機シルエット)
+;   res/bullet_hole.png (弾痕スプライト)
+;   res/armor_plate.png (装甲板画像)
+;   res/reveal.mp3 (正解発表SE)
+;   res/click.mp3 (クリックSE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+#const MAX_HOLES 50
+
+; モード
+#const MODE_PLACE 0
+#const MODE_REVEAL 1
+
+; 飛行機の中心
+#const PLANE_CX 300
+#const PLANE_CY 280
+
+; 色
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+mode = MODE_PLACE
+hole_count = 0
+dim hole_x, MAX_HOLES
+dim hole_y, MAX_HOLES
+
+; 飛行機パーツのバウンディングボックス（当たり判定用）
+; 胴体、左翼、右翼、左エンジン、右エンジン、尾翼
+#const PART_COUNT 6
+dim part_x1, PART_COUNT
+dim part_y1, PART_COUNT
+dim part_x2, PART_COUNT
+dim part_y2, PART_COUNT
+dim part_holes, PART_COUNT  ; 各パーツの弾痕数
+sdim part_name, 16, PART_COUNT
+
+; 胴体
+part_x1(0) = 180 : part_y1(0) = 255 : part_x2(0) = 430 : part_y2(0) = 305
+part_name(0) = "胴体"
+; 左翼
+part_x1(1) = 220 : part_y1(1) = 180 : part_x2(1) = 340 : part_y2(1) = 255
+part_name(1) = "左翼"
+; 右翼
+part_x1(2) = 220 : part_y1(2) = 305 : part_x2(2) = 340 : part_y2(2) = 380
+part_name(2) = "右翼"
+; 左エンジン
+part_x1(3) = 250 : part_y1(3) = 195 : part_x2(3) = 290 : part_y2(3) = 225
+part_name(3) = "左エンジン"
+; 右エンジン
+part_x1(4) = 250 : part_y1(4) = 335 : part_x2(4) = 290 : part_y2(4) = 365
+part_name(4) = "右エンジン"
+; 尾翼
+part_x1(5) = 390 : part_y1(5) = 230 : part_x2(5) = 430 : part_y2(5) = 330
+part_name(5) = "尾翼"
+
+; リセット弾痕数
+repeat PART_COUNT
+    part_holes(cnt) = 0
+loop
+
+; ボタン
+reveal_bx = 580 : reveal_by = 480
+reveal_bw = 180 : reveal_bh = 40
+reset_bx = 580 : reset_by = 530
+reset_bw = 180 : reset_bh = 40
+
+; reveal アニメーション
+reveal_alpha = 0
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 10
+    mes "生存者バイアス — 帰還した爆撃機の弾痕"
+
+    ; 説明テキスト
+    gosub *draw_instructions
+
+    ; 飛行機描画
+    gosub *draw_plane
+
+    ; 弾痕描画
+    gosub *draw_holes
+
+    ; リビールモード
+    if mode == MODE_REVEAL {
+        gosub *draw_reveal
+    }
+
+    ; パーツ別統計
+    gosub *draw_part_stats
+
+    ; ボタン
+    gosub *draw_buttons
+
+    ; 入力
+    gosub *handle_input
+
+    ; 更新
+    gosub *update
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- 説明テキスト ---
+*draw_instructions
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+
+    if mode == MODE_PLACE {
+        pos 20, 40
+        mes "WW2の爆撃機が帰還しました。弾痕の位置を記録してください。"
+        pos 20, 58
+        mes "飛行機の上をクリックして弾痕を配置しましょう。(残り: " + (MAX_HOLES - hole_count) + ")"
+    } else {
+        pos 20, 40
+        color 255, 220, 100
+        mes "【正解】弾痕のない場所こそ装甲すべき場所です！"
+        color TEXT_R, TEXT_G, TEXT_B
+        pos 20, 58
+        mes "なぜなら、そこに被弾した機体は帰還できなかったから。"
+    }
+    return
+
+; --- 飛行機描画（上から見た簡略図）---
+*draw_plane
+    ; 胴体
+    color 70, 75, 85
+    boxf part_x1(0), part_y1(0), part_x2(0), part_y2(0)
+
+    ; 機首（三角）
+    line 180, 255, 150, 280
+    line 150, 280, 180, 305
+
+    ; 左翼
+    color 65, 70, 80
+    boxf part_x1(1), part_y1(1), part_x2(1), part_y2(1)
+
+    ; 右翼
+    boxf part_x1(2), part_y1(2), part_x2(2), part_y2(2)
+
+    ; 左エンジン（丸）
+    color 80, 85, 95
+    ex = (part_x1(3) + part_x2(3)) / 2
+    ey = (part_y1(3) + part_y2(3)) / 2
+    er = 14
+    circle ex - er, ey - er, ex + er, ey + er, 1
+
+    ; 右エンジン
+    ex = (part_x1(4) + part_x2(4)) / 2
+    ey = (part_y1(4) + part_y2(4)) / 2
+    circle ex - er, ey - er, ex + er, ey + er, 1
+
+    ; 尾翼
+    color 60, 65, 75
+    boxf part_x1(5), part_y1(5), part_x2(5), part_y2(5)
+
+    ; 尾部装飾
+    line 430, 230, 450, 220
+    line 430, 330, 450, 340
+    line 430, 280, 460, 280
+
+    ; パーツ名ラベル（薄く）
+    color 50, 55, 65
+    font "MS Gothic", 9
+    pos 285, 275 : mes "胴体"
+    pos 265, 213 : mes "左翼"
+    pos 265, 337 : mes "右翼"
+    pos 255, 205 : mes "E"
+    pos 255, 345 : mes "E"
+    pos 400, 275 : mes "尾翼"
+    return
+
+; --- 弾痕描画 ---
+*draw_holes
+    repeat hole_count
+        hx = hole_x(cnt)
+        hy = hole_y(cnt)
+        ; 赤い弾痕
+        color 200, 40, 40
+        circle hx - 5, hy - 5, hx + 5, hy + 5, 1
+        ; 中心の暗い点
+        color 80, 20, 20
+        circle hx - 2, hy - 2, hx + 2, hy + 2, 1
+    loop
+
+    ; 弾痕数表示
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 14
+    pos 20, 430
+    mes "配置した弾痕: " + hole_count + " / " + MAX_HOLES
+    return
+
+; --- リビール描画 ---
+*draw_reveal
+    if reveal_alpha < 80 : reveal_alpha += 2
+
+    ; 弾痕の多いパーツは「見かけ上危険だが実は安全」
+    ; 弾痕の少ないパーツを強調（緑で塗る）
+
+    ; 各パーツの弾痕密度を計算
+    max_holes_in_part = 0
+    repeat PART_COUNT
+        if part_holes(cnt) > max_holes_in_part {
+            max_holes_in_part = part_holes(cnt)
+        }
+    loop
+
+    ; 弾痕が少ないパーツほど緑（装甲すべき）で強調
+    repeat PART_COUNT
+        if max_holes_in_part > 0 {
+            danger = 255 - part_holes(cnt) * 200 / (max_holes_in_part + 1)
+        } else {
+            danger = 255
+        }
+
+        if part_holes(cnt) == 0 {
+            ; 弾痕なし → 最も装甲すべき（赤く強調）
+            color 180, 40, 40
+        } else {
+            if part_holes(cnt) <= 2 {
+                ; 少ない → 要注意
+                color 180, 150, 40
+            } else {
+                ; 多い → 安全（帰還できた証拠）
+                color 40, 140, 60
+            }
+        }
+
+        ; 半透明風にパーツを塗る
+        ; HSPには半透明がないので、グリッドパターンで疑似的に
+        px1 = part_x1(cnt)
+        py1 = part_y1(cnt)
+        px2 = part_x2(cnt)
+        py2 = part_y2(cnt)
+
+        ; 縞模様で重ねる
+        yy = py1
+        repeat
+            if yy >= py2 : break
+            line px1, yy, px2, yy
+            yy += 3
+        loop
+    loop
+
+    ; 凡例
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+    pos 500, 180
+    mes "【凡例】"
+
+    color 180, 40, 40
+    boxf 500, 205, 520, 220
+    color TEXT_R, TEXT_G, TEXT_B
+    pos 525, 205
+    mes "装甲すべき (弾痕なし)"
+
+    color 180, 150, 40
+    boxf 500, 230, 520, 245
+    color TEXT_R, TEXT_G, TEXT_B
+    pos 525, 230
+    mes "要注意 (弾痕少)"
+
+    color 40, 140, 60
+    boxf 500, 255, 520, 270
+    color TEXT_R, TEXT_G, TEXT_B
+    pos 525, 255
+    mes "安全 (帰還の証拠)"
+
+    ; 解説
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    font "MS Gothic", 12
+    pos 500, 300
+    mes "エイブラハム・ウォールドの洞察:"
+    pos 500, 318
+    mes "「帰還した機体」しか調査できない。"
+    pos 500, 336
+    mes "弾痕のある場所は被弾しても"
+    pos 500, 354
+    mes "帰還できた=致命的でない。"
+    pos 500, 372
+    mes "弾痕のない場所こそ"
+    pos 500, 390
+    mes "被弾=墜落を意味する。"
+    return
+
+; --- パーツ別統計 ---
+*draw_part_stats
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 12
+    pos 20, 455
+    mes "パーツ別弾痕数:"
+
+    repeat PART_COUNT
+        pos 20, 475 + cnt * 16
+        mes part_name(cnt) + ": " + part_holes(cnt)
+
+        ; 小さなバー
+        color ACCENT_R, ACCENT_G, ACCENT_B
+        bw = part_holes(cnt) * 8
+        if bw > 120 : bw = 120
+        if bw > 0 {
+            boxf 130, 477 + cnt * 16, 130 + bw, 487 + cnt * 16
+        }
+        color TEXT_R, TEXT_G, TEXT_B
+    loop
+    return
+
+; --- ボタン ---
+*draw_buttons
+    ; リビールボタン
+    if mode == MODE_PLACE && hole_count >= 3 {
+        color 120, 100, 40
+    } else {
+        if mode == MODE_PLACE {
+            color 50, 45, 35
+        } else {
+            color 40, 80, 50
+        }
+    }
+    boxf reveal_bx, reveal_by, reveal_bx + reveal_bw, reveal_by + reveal_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 16
+    pos reveal_bx + 20, reveal_by + 10
+    if mode == MODE_PLACE {
+        mes "正解を見る"
+    } else {
+        mes "正解表示中"
+    }
+
+    ; リセットボタン
+    color 60, 40, 40
+    boxf reset_bx, reset_by, reset_bx + reset_bw, reset_by + reset_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    pos reset_bx + 40, reset_by + 10
+    mes "リセット"
+    return
+
+; --- 入力 ---
+*handle_input
+    stick key, 256
+    if (key & 256) == 0 : return
+
+    mx = mousex : my = mousey
+
+    ; リビールボタン
+    if mx >= reveal_bx && mx <= reveal_bx + reveal_bw {
+        if my >= reveal_by && my <= reveal_by + reveal_bh {
+            if mode == MODE_PLACE && hole_count >= 3 {
+                mode = MODE_REVEAL
+                reveal_alpha = 0
+            }
+            return
+        }
+    }
+
+    ; リセットボタン
+    if mx >= reset_bx && mx <= reset_bx + reset_bw {
+        if my >= reset_by && my <= reset_by + reset_bh {
+            mode = MODE_PLACE
+            hole_count = 0
+            reveal_alpha = 0
+            repeat PART_COUNT
+                part_holes(cnt) = 0
+            loop
+            return
+        }
+    }
+
+    ; 弾痕配置（PLACEモードのみ）
+    if mode == MODE_PLACE && hole_count < MAX_HOLES {
+        ; 飛行機上かチェック
+        on_plane = 0
+        hit_part = -1
+        repeat PART_COUNT
+            if mx >= part_x1(cnt) && mx <= part_x2(cnt) {
+                if my >= part_y1(cnt) && my <= part_y2(cnt) {
+                    on_plane = 1
+                    hit_part = cnt
+                    break
+                }
+            }
+        loop
+
+        if on_plane {
+            hole_x(hole_count) = mx
+            hole_y(hole_count) = my
+            hole_count++
+            if hit_part >= 0 {
+                part_holes(hit_part)++
+            }
+        }
+    }
+    return
+
+; --- 更新 ---
+*update
+    ; 特になし（リビールのアルファは draw_reveal 内で更新）
+    return

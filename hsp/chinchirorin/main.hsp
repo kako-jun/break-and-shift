@@ -1,0 +1,214 @@
+; ============================================================
+; チンチロリン — 3Dサイコロ物理シミュレーション
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材:
+;   res/dice_face_1.png 〜 dice_face_6.png (各面テクスチャ 256x256)
+;   res/table_felt.png (卓テクスチャ 512x512)
+;   res/bowl.png (丼テクスチャ or 3Dモデル)
+;   res/dice_roll.mp3 (転がり効果音)
+;   res/dice_hit.mp3 (衝突効果音)
+; ============================================================
+
+#include "hsp3dish.as"
+; #include "hgimg4.as"  ; 3D描画用（素材準備後に有効化）
+; #include "obaq.as"    ; 物理演算用（素材準備後に有効化）
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const DICE_COUNT 3
+#const STATE_IDLE 0
+#const STATE_ROLLING 1
+#const STATE_RESULT 2
+
+; --- 変数 ---
+dim dice_value, DICE_COUNT   ; サイコロの出目
+repeat DICE_COUNT : dice_value(cnt) = 1 : loop  ; 初期値1
+dim dice_x, DICE_COUNT
+dim dice_y, DICE_COUNT
+state = STATE_IDLE
+roll_count = 0
+total_rolls = 0        ; 振った回数（1回で3個振る）
+total_dice = 0         ; 出目の総数（= total_rolls * 3）
+
+; 統計用（χ²検定）
+dim freq, 6  ; 出目1〜6の出現回数
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color 5, 8, 16
+    boxf 0, 0, 799, 599
+
+    ; タイトル
+    color 192, 197, 206
+    font "MS Gothic", 20
+    pos 20, 20
+    mes "チンチロリン — サイコロの偏りを検出せよ"
+
+    ; サイコロ描画（仮: 2D矩形。3Dテクスチャ素材が来たら HGIMG4 に差し替え）
+    gosub *draw_dice
+
+    ; 統計表示
+    gosub *draw_stats
+
+    ; ボタン
+    gosub *draw_buttons
+
+    ; 状態更新
+    if state == STATE_ROLLING {
+        gosub *update_rolling
+    }
+
+    redraw 1
+    await 16  ; 約60fps
+    goto *main
+
+; --- サイコロ描画 ---
+*draw_dice
+    repeat DICE_COUNT
+        dx = 200 + cnt * 180
+        dy = 250
+
+        ; サイコロ本体（仮: 白い矩形）
+        color 240, 240, 230
+        boxf dx, dy, dx + 80, dy + 80
+
+        ; 枠線
+        color 40, 40, 40
+        line dx, dy, dx + 80, dy
+        line dx + 80, dy, dx + 80, dy + 80
+        line dx + 80, dy + 80, dx, dy + 80
+        line dx, dy + 80, dx, dy
+
+        ; 出目表示（仮: 数字。テクスチャ素材が来たらドットパターンに差し替え）
+        if state != STATE_ROLLING {
+            color 20, 20, 20
+            font "MS Gothic", 32
+            pos dx + 28, dy + 22
+            mes "" + dice_value(cnt)
+        } else {
+            ; ローリング中はランダム表示
+            color 20, 20, 20
+            font "MS Gothic", 32
+            pos dx + 28, dy + 22
+            rv = rnd(6) + 1
+            mes "" + rv
+        }
+    loop
+    return
+
+; --- 統計表示 ---
+*draw_stats
+    color 192, 197, 206
+    font "MS Gothic", 14
+
+    pos 20, 420
+    mes "総振り回数: " + total_rolls + " （出目数: " + total_dice + "）"
+
+    ; 出目分布
+    pos 20, 450
+    mes "出目分布:"
+    repeat 6
+        pos 20, 470 + cnt * 18
+        pct = 0
+        if total_dice > 0 {
+            pct = freq(cnt) * 100 / total_dice
+        }
+        mes "" + (cnt + 1) + ": " + freq(cnt) + " 回 (" + pct + "%)"
+
+        ; バーグラフ
+        color 74, 124, 140
+        bar_w = 0
+        if total_dice > 0 {
+            bar_w = freq(cnt) * 200 / total_dice
+        }
+        boxf 150, 472 + cnt * 18, 150 + bar_w, 484 + cnt * 18
+    loop
+
+    ; χ²値（出目数30以上で表示）
+    if total_dice >= 30 {
+        chi2 = 0
+        expected = total_dice / 6
+        if expected > 0 {
+            repeat 6
+                diff = freq(cnt) - expected
+                chi2 += diff * diff * 100 / expected
+            loop
+        }
+        pos 400, 450
+        color 192, 197, 206
+        mes "χ² = " + (chi2 / 100) + "." + (chi2 \ 100)
+        pos 400, 470
+        if chi2 > 1259 {
+            ; 12.59 * 100 = 1259 (α=0.05, df=5)
+            color 255, 100, 100
+            mes "⚠ 偏りを検出 (p < 0.05)"
+        } else {
+            color 100, 255, 150
+            mes "偏りなし (p ≥ 0.05)"
+        }
+    }
+    return
+
+; --- ボタン ---
+*draw_buttons
+    ; 振るボタン
+    bx = 300 : by = 370
+    if state == STATE_IDLE {
+        color 45, 62, 95
+    } else {
+        color 30, 40, 60
+    }
+    boxf bx, by, bx + 100, by + 36
+
+    color 192, 197, 206
+    font "MS Gothic", 16
+    pos bx + 24, by + 8
+    mes "振る"
+
+    ; リセットボタン
+    rx = 420 : ry = 370
+    color 60, 40, 40
+    boxf rx, ry, rx + 100, ry + 36
+    color 192, 197, 206
+    pos rx + 12, ry + 8
+    mes "リセット"
+
+    ; クリック判定
+    stick key, 256
+    if key & 256 {
+        if mousex >= bx && mousex <= bx + 100 && mousey >= by && mousey <= by + 36 {
+            if state == STATE_IDLE {
+                state = STATE_ROLLING
+                roll_count = 0
+            }
+        }
+        if mousex >= rx && mousex <= rx + 100 && mousey >= ry && mousey <= ry + 36 {
+            total_rolls = 0
+            total_dice = 0
+            repeat 6 : freq(cnt) = 0 : loop
+            repeat DICE_COUNT : dice_value(cnt) = 1 : loop
+            state = STATE_IDLE
+        }
+    }
+    return
+
+; --- ローリング更新 ---
+*update_rolling
+    roll_count++
+    if roll_count >= 60 {
+        ; 確定
+        repeat DICE_COUNT
+            dice_value(cnt) = rnd(6) + 1
+            freq(dice_value(cnt) - 1)++
+        loop
+        total_rolls++
+        total_dice += DICE_COUNT
+        state = STATE_IDLE
+    }
+    return

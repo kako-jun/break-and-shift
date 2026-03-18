@@ -1,0 +1,416 @@
+; ============================================================
+; クレーンゲーム — 確率の錯覚と救済措置
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/claw_arm.png (アーム画像)
+;   res/claw_body.png (クレーン本体)
+;   res/prize_*.png (景品画像 複数)
+;   res/machine_frame.png (筐体フレーム)
+;   res/grab_success.mp3 (掴み成功SE)
+;   res/grab_fail.mp3 (掴み失敗SE)
+;   res/motor.mp3 (モーター移動SE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+
+; 状態
+#const ST_MOVE 0
+#const ST_DROP 1
+#const ST_GRAB 2
+#const ST_LIFT 3
+#const ST_RESULT 4
+
+; 筐体範囲
+#const MACHINE_LEFT 150
+#const MACHINE_RIGHT 650
+#const MACHINE_TOP 60
+#const MACHINE_BOTTOM 480
+#const FLOOR_Y 440
+#const ARM_START_Y 100
+#const PRIZE_RADIUS 18
+
+; 景品数
+#const MAX_PRIZES 8
+
+; 色定数
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+arm_x = 400
+arm_y = ARM_START_Y
+arm_target_y = ARM_START_Y
+state = ST_MOVE
+grip_strength = 10       ; 初期握力 10%（隠しパラメータ）
+grip_increment = 22      ; 失敗ごとに +22.5%（整数近似。10→32→55→77→100）
+attempts = 0
+successes = 0
+grabbed_prize = -1
+result_timer = 0
+result_msg = ""
+
+; 景品配置
+dim prize_x, MAX_PRIZES
+dim prize_y, MAX_PRIZES
+dim prize_alive, MAX_PRIZES
+dim prize_color_r, MAX_PRIZES
+dim prize_color_g, MAX_PRIZES
+dim prize_color_b, MAX_PRIZES
+sdim prize_label, 8, MAX_PRIZES
+
+gosub *init_prizes
+
+; ボタン領域
+btn_left_x = 60 : btn_left_y = 500
+btn_right_x = 60 : btn_right_y = 545
+btn_drop_x = 680 : btn_drop_y = 520
+btn_w = 80 : btn_h = 32
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 10
+    mes "クレーンゲーム — なぜか最後には取れる仕組み"
+
+    ; 筐体描画
+    gosub *draw_machine
+
+    ; 景品描画
+    gosub *draw_prizes
+
+    ; アーム描画
+    gosub *draw_arm
+
+    ; ボタン描画
+    gosub *draw_buttons
+
+    ; 統計描画
+    gosub *draw_stats
+
+    ; 状態更新
+    gosub *update_state
+
+    ; 入力処理
+    gosub *handle_input
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- 景品初期化 ---
+*init_prizes
+    prize_x(0) = 220 : prize_y(0) = FLOOR_Y - 18
+    prize_x(1) = 280 : prize_y(1) = FLOOR_Y - 18
+    prize_x(2) = 340 : prize_y(2) = FLOOR_Y - 18
+    prize_x(3) = 400 : prize_y(3) = FLOOR_Y - 18
+    prize_x(4) = 460 : prize_y(4) = FLOOR_Y - 18
+    prize_x(5) = 520 : prize_y(5) = FLOOR_Y - 18
+    prize_x(6) = 310 : prize_y(6) = FLOOR_Y - 40
+    prize_x(7) = 430 : prize_y(7) = FLOOR_Y - 40
+
+    prize_color_r(0) = 220 : prize_color_g(0) = 80  : prize_color_b(0) = 80
+    prize_color_r(1) = 80  : prize_color_g(1) = 180 : prize_color_b(1) = 220
+    prize_color_r(2) = 220 : prize_color_g(2) = 200 : prize_color_b(2) = 80
+    prize_color_r(3) = 120 : prize_color_g(3) = 220 : prize_color_b(3) = 120
+    prize_color_r(4) = 200 : prize_color_g(4) = 120 : prize_color_b(4) = 220
+    prize_color_r(5) = 220 : prize_color_g(5) = 150 : prize_color_b(5) = 80
+    prize_color_r(6) = 180 : prize_color_g(6) = 180 : prize_color_b(6) = 220
+    prize_color_r(7) = 220 : prize_color_g(7) = 120 : prize_color_b(7) = 160
+
+    prize_label(0) = "A" : prize_label(1) = "B" : prize_label(2) = "C" : prize_label(3) = "D"
+    prize_label(4) = "E" : prize_label(5) = "F" : prize_label(6) = "G" : prize_label(7) = "H"
+
+    repeat MAX_PRIZES
+        prize_alive(cnt) = 1
+    loop
+    return
+
+; --- 筐体描画 ---
+*draw_machine
+    ; ガラスケース外枠
+    color 60, 70, 90
+    ; 上辺
+    boxf MACHINE_LEFT, MACHINE_TOP, MACHINE_RIGHT, MACHINE_TOP + 4
+    ; 下辺
+    boxf MACHINE_LEFT, MACHINE_BOTTOM, MACHINE_RIGHT, MACHINE_BOTTOM + 4
+    ; 左辺
+    boxf MACHINE_LEFT, MACHINE_TOP, MACHINE_LEFT + 4, MACHINE_BOTTOM + 4
+    ; 右辺
+    boxf MACHINE_RIGHT - 4, MACHINE_TOP, MACHINE_RIGHT, MACHINE_BOTTOM + 4
+    ; レール
+    color 50, 55, 70
+    boxf MACHINE_LEFT + 4, MACHINE_TOP + 30, MACHINE_RIGHT - 4, MACHINE_TOP + 34
+    ; 床
+    color 40, 45, 55
+    boxf MACHINE_LEFT + 4, FLOOR_Y, MACHINE_RIGHT - 4, MACHINE_BOTTOM
+    ; 取り出し口
+    color 30, 35, 45
+    boxf 370, MACHINE_BOTTOM + 4, 430, MACHINE_BOTTOM + 40
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 10
+    pos 378, MACHINE_BOTTOM + 14
+    mes "取出口"
+
+    ; 結果メッセージ
+    if state == ST_RESULT {
+        color TEXT_R, TEXT_G, TEXT_B
+        font "MS Gothic", 22
+        pos 280, 250
+        mes result_msg
+    }
+    return
+
+; --- 景品描画 ---
+*draw_prizes
+    repeat MAX_PRIZES
+        if prize_alive(cnt) == 1 {
+            px = prize_x(cnt)
+            py = prize_y(cnt)
+            ; 丸い景品
+            color prize_color_r(cnt), prize_color_g(cnt), prize_color_b(cnt)
+            circle px - PRIZE_RADIUS, py - PRIZE_RADIUS, px + PRIZE_RADIUS, py + PRIZE_RADIUS, 1
+            ; ラベル
+            color 20, 20, 20
+            font "MS Gothic", 14
+            pos px - 5, py - 8
+            mes prize_label(cnt)
+        }
+    loop
+    return
+
+; --- アーム描画 ---
+*draw_arm
+    ; アーム台座（レール上）
+    color 100, 110, 130
+    boxf arm_x - 20, MACHINE_TOP + 10, arm_x + 20, MACHINE_TOP + 30
+
+    ; ワイヤー
+    color 160, 165, 175
+    line arm_x, MACHINE_TOP + 30, arm_x, arm_y
+
+    ; クローヘッド
+    color 140, 145, 160
+    boxf arm_x - 12, arm_y, arm_x + 12, arm_y + 10
+
+    ; 爪（左右）
+    if state == ST_GRAB || (state == ST_LIFT && grabbed_prize >= 0) {
+        ; 閉じた爪
+        line arm_x - 12, arm_y + 10, arm_x - 6, arm_y + 28
+        line arm_x + 12, arm_y + 10, arm_x + 6, arm_y + 28
+    } else {
+        ; 開いた爪
+        line arm_x - 12, arm_y + 10, arm_x - 18, arm_y + 28
+        line arm_x + 12, arm_y + 10, arm_x + 18, arm_y + 28
+    }
+    return
+
+; --- ボタン描画 ---
+*draw_buttons
+    ; 左ボタン
+    color BTN_R, BTN_G, BTN_B
+    boxf btn_left_x, btn_left_y, btn_left_x + btn_w, btn_left_y + btn_h
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 14
+    pos btn_left_x + 18, btn_left_y + 8
+    mes "← 左"
+
+    ; 右ボタン（左ボタンの右隣に配置）
+    btn_right_x = btn_left_x + btn_w + 10
+    color BTN_R, BTN_G, BTN_B
+    boxf btn_right_x, btn_left_y, btn_right_x + btn_w, btn_left_y + btn_h
+    color TEXT_R, TEXT_G, TEXT_B
+    pos btn_right_x + 18, btn_left_y + 8
+    mes "右 →"
+
+    ; ドロップボタン
+    if state == ST_MOVE {
+        color 120, 60, 60
+    } else {
+        color 60, 40, 40
+    }
+    boxf btn_drop_x, btn_drop_y, btn_drop_x + btn_w, btn_drop_y + btn_h
+    color TEXT_R, TEXT_G, TEXT_B
+    pos btn_drop_x + 10, btn_drop_y + 8
+    mes "つかむ!"
+    return
+
+; --- 統計描画 ---
+*draw_stats
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 14
+    pos 280, 510
+    mes "挑戦回数: " + attempts
+
+    pos 280, 530
+    mes "成功回数: " + successes
+
+    pos 280, 550
+    if attempts > 0 {
+        rate = successes * 100 / attempts
+        mes "成功率: " + rate + "%"
+    } else {
+        mes "成功率: ---"
+    }
+
+    ; 握力インジケーター（隠し情報だがヒントとして薄く表示）
+    pos 280, 575
+    color 60, 65, 75
+    font "MS Gothic", 10
+    mes "握力ゲージ: " + grip_strength + "%"
+    ; 握力バー
+    color 40, 50, 60
+    boxf 410, 577, 560, 587
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    bar_w = grip_strength * 150 / 100
+    if bar_w > 150 : bar_w = 150
+    boxf 410, 577, 410 + bar_w, 587
+    return
+
+; --- 状態更新 ---
+*update_state
+    if state == ST_DROP {
+        arm_y += 4
+        ; 床に到達
+        if arm_y >= FLOOR_Y - 30 {
+            arm_y = FLOOR_Y - 30
+            state = ST_GRAB
+            ; 掴み判定
+            grabbed_prize = -1
+            repeat MAX_PRIZES
+                if prize_alive(cnt) == 1 {
+                    dx = arm_x - prize_x(cnt)
+                    dy = arm_y + 20 - prize_y(cnt)
+                    if dx < 0 : dx = -dx
+                    if dy < 0 : dy = -dy
+                    if dx < 24 && dy < 30 {
+                        ; 距離内にある景品を発見。握力で判定
+                        roll = rnd(100)
+                        if roll < grip_strength {
+                            grabbed_prize = cnt
+                        }
+                        break
+                    }
+                }
+            loop
+            result_timer = 30
+        }
+    }
+
+    if state == ST_GRAB {
+        result_timer--
+        if result_timer <= 0 {
+            state = ST_LIFT
+        }
+    }
+
+    if state == ST_LIFT {
+        arm_y -= 3
+        if grabbed_prize >= 0 {
+            prize_x(grabbed_prize) = arm_x
+            prize_y(grabbed_prize) = arm_y + 24
+        }
+        if arm_y <= ARM_START_Y {
+            arm_y = ARM_START_Y
+            state = ST_RESULT
+            attempts++
+            if grabbed_prize >= 0 {
+                prize_alive(grabbed_prize) = 0
+                successes++
+                grip_strength = 10 ; リセット
+                result_msg = "景品ゲット！おめでとう！"
+            } else {
+                ; 失敗 → 握力UP（救済措置）
+                grip_strength += grip_increment
+                if grip_strength > 95 : grip_strength = 95
+                result_msg = "惜しい…もう少しで掴めそう！"
+            }
+            result_timer = 90
+        }
+    }
+
+    if state == ST_RESULT {
+        result_timer--
+        if result_timer <= 0 {
+            state = ST_MOVE
+            ; 全景品が取られたらリセット
+            alive_count = 0
+            repeat MAX_PRIZES
+                alive_count += prize_alive(cnt)
+            loop
+            if alive_count == 0 {
+                gosub *init_prizes
+            }
+        }
+    }
+    return
+
+; --- 入力処理 ---
+*handle_input
+    stick key, 256 + 1 + 4  ; クリック + 左右キー
+
+    if state == ST_MOVE {
+        ; キーボード入力
+        if key & 1 {  ; 左キー
+            arm_x -= 4
+        }
+        if key & 4 {  ; 右キー
+            arm_x += 4
+        }
+
+        ; マウスクリック判定
+        if key & 256 {
+            mx = mousex : my = mousey
+
+            ; 左ボタン
+            if mx >= btn_left_x && mx <= btn_left_x + btn_w {
+                if my >= btn_left_y && my <= btn_left_y + btn_h {
+                    arm_x -= 12
+                }
+            }
+
+            ; 右ボタン
+            if mx >= btn_right_x && mx <= btn_right_x + btn_w {
+                if my >= btn_left_y && my <= btn_left_y + btn_h {
+                    arm_x += 12
+                }
+            }
+
+            ; ドロップボタン
+            if mx >= btn_drop_x && mx <= btn_drop_x + btn_w {
+                if my >= btn_drop_y && my <= btn_drop_y + btn_h {
+                    state = ST_DROP
+                }
+            }
+        }
+
+        ; 範囲制限
+        if arm_x < MACHINE_LEFT + 30 : arm_x = MACHINE_LEFT + 30
+        if arm_x > MACHINE_RIGHT - 30 : arm_x = MACHINE_RIGHT - 30
+    }
+    return

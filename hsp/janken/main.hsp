@@ -1,0 +1,417 @@
+; ============================================================
+; じゃんけん — CPUは見てから出している
+; break-and-shift / HSP3Dish.js 版
+; ============================================================
+; 必要素材（将来差し替え用）:
+;   res/hand_rock.png (グーの手)
+;   res/hand_scissors.png (チョキの手)
+;   res/hand_paper.png (パーの手)
+;   res/vs_frame.png (VS表示フレーム)
+;   res/win.mp3 (勝ちSE)
+;   res/lose.mp3 (負けSE)
+;   res/draw.mp3 (あいこSE)
+; ============================================================
+
+#include "hsp3dish.as"
+
+; --- 画面設定 ---
+screen 0, 800, 600, 0
+
+; --- 定数 ---
+#const SCREEN_W 800
+#const SCREEN_H 600
+
+; 手の種類
+#const ROCK 0
+#const SCISSORS 1
+#const PAPER 2
+
+; 状態
+#const ST_CHOOSE 0
+#const ST_ANIM 1
+#const ST_RESULT 2
+
+; 色
+#const BG_R 5
+#const BG_G 8
+#const BG_B 16
+#const TEXT_R 192
+#const TEXT_G 197
+#const TEXT_B 206
+#const ACCENT_R 74
+#const ACCENT_G 124
+#const ACCENT_B 140
+#const BTN_R 45
+#const BTN_G 62
+#const BTN_B 95
+
+; --- 変数 ---
+state = ST_CHOOSE
+player_hand = -1
+cpu_hand = -1
+anim_timer = 0
+result_timer = 0
+
+; 統計
+total_games = 0
+player_wins = 0
+cpu_wins = 0
+draws = 0
+
+; チートモード
+cheat_on = 1   ; デフォルトON
+
+; 手の名前
+sdim hand_name, 8, 3
+hand_name(0) = "グー"
+hand_name(1) = "チョキ"
+hand_name(2) = "パー"
+
+; 結果表示
+sdim result_msg, 64
+result_msg = ""
+result_color_r = TEXT_R
+result_color_g = TEXT_G
+result_color_b = TEXT_B
+
+; ボタン位置
+dim btn_x, 3
+dim btn_y, 3
+btn_x(0) = 120 : btn_y(0) = 420
+btn_x(1) = 320 : btn_y(1) = 420
+btn_x(2) = 520 : btn_y(2) = 420
+btn_w = 160 : btn_h = 50
+
+; チートトグル
+cheat_bx = 600 : cheat_by = 10
+cheat_bw = 180 : cheat_bh = 30
+
+; マウスホバー追跡（チート用）
+last_hover = -1    ; 直前にどのボタン上にいたか
+
+; --- メインループ ---
+*main
+    redraw 0
+
+    ; 背景
+    color BG_R, BG_G, BG_B
+    boxf 0, 0, SCREEN_W - 1, SCREEN_H - 1
+
+    ; タイトル
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 18
+    pos 20, 14
+    mes "じゃんけん — CPUは本当にランダム？"
+
+    ; 対戦画面
+    gosub *draw_arena
+
+    ; ボタン
+    gosub *draw_hand_buttons
+
+    ; チートトグル
+    gosub *draw_cheat_toggle
+
+    ; 統計
+    gosub *draw_stats
+
+    ; 解説
+    gosub *draw_explanation
+
+    ; 更新
+    gosub *update
+
+    ; 入力
+    gosub *handle_input
+
+    redraw 1
+    await 16
+    goto *main
+
+; --- 対戦画面 ---
+*draw_arena
+    ; プレイヤー側
+    color 50, 55, 70
+    boxf 60, 100, 340, 360
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 16
+    pos 160, 110
+    mes "あなた"
+
+    ; CPU側
+    color 50, 55, 70
+    boxf 460, 100, 740, 360
+    color TEXT_R, TEXT_G, TEXT_B
+    pos 570, 110
+    mes "CPU"
+
+    ; VS
+    color ACCENT_R, ACCENT_G, ACCENT_B
+    font "MS Gothic", 32
+    pos 375, 200
+    mes "VS"
+
+    ; 出した手の表示
+    if state == ST_ANIM {
+        ; アニメ中はランダム表示
+        font "MS Gothic", 60
+        color TEXT_R, TEXT_G, TEXT_B
+        a_hand = rnd(3)
+        pos 150, 210
+        mes hand_name(a_hand)
+        a_hand = rnd(3)
+        pos 550, 210
+        mes hand_name(a_hand)
+    }
+
+    if state == ST_RESULT {
+        font "MS Gothic", 60
+        ; プレイヤーの手
+        color 180, 200, 255
+        pos 150, 210
+        mes hand_name(player_hand)
+        ; CPUの手
+        color 255, 180, 180
+        pos 550, 210
+        mes hand_name(cpu_hand)
+
+        ; 結果
+        color result_color_r, result_color_g, result_color_b
+        font "MS Gothic", 28
+        pos 300, 320
+        mes result_msg
+    }
+    return
+
+; --- 手ボタン描画 ---
+*draw_hand_buttons
+    if state != ST_CHOOSE {
+        ; 選択不可時はグレー表示
+        repeat 3
+            color 30, 35, 45
+            boxf btn_x(cnt), btn_y(cnt), btn_x(cnt) + btn_w, btn_y(cnt) + btn_h
+            color 80, 85, 95
+            font "MS Gothic", 24
+            pos btn_x(cnt) + 50, btn_y(cnt) + 12
+            mes hand_name(cnt)
+        loop
+        return
+    }
+
+    ; ホバー追跡（チート用）
+    mx = mousex : my = mousey
+    last_hover = -1
+    repeat 3
+        if mx >= btn_x(cnt) && mx <= btn_x(cnt) + btn_w {
+            if my >= btn_y(cnt) && my <= btn_y(cnt) + btn_h {
+                last_hover = cnt
+            }
+        }
+    loop
+
+    repeat 3
+        ; ホバー中は明るく
+        if cnt == last_hover {
+            color BTN_R + 20, BTN_G + 20, BTN_B + 20
+        } else {
+            color BTN_R, BTN_G, BTN_B
+        }
+        boxf btn_x(cnt), btn_y(cnt), btn_x(cnt) + btn_w, btn_y(cnt) + btn_h
+        color TEXT_R, TEXT_G, TEXT_B
+        font "MS Gothic", 24
+        pos btn_x(cnt) + 50, btn_y(cnt) + 12
+        mes hand_name(cnt)
+    loop
+    return
+
+; --- チートトグル ---
+*draw_cheat_toggle
+    if cheat_on {
+        color 120, 50, 50
+    } else {
+        color 40, 80, 50
+    }
+    boxf cheat_bx, cheat_by, cheat_bx + cheat_bw, cheat_by + cheat_bh
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 13
+    pos cheat_bx + 8, cheat_by + 7
+    if cheat_on {
+        mes "CPU後出し: ON (卑怯)"
+    } else {
+        mes "CPU後出し: OFF (公正)"
+    }
+    return
+
+; --- 統計 ---
+*draw_stats
+    color TEXT_R, TEXT_G, TEXT_B
+    font "MS Gothic", 14
+
+    pos 20, 500
+    mes "対戦数: " + total_games
+
+    pos 20, 520
+    mes "勝ち: " + player_wins + " / 負け: " + cpu_wins + " / あいこ: " + draws
+
+    pos 20, 545
+    if total_games > 0 {
+        w_pct = player_wins * 100 / total_games
+        l_pct = cpu_wins * 100 / total_games
+        mes "勝率: " + w_pct + "% / 負率: " + l_pct + "%"
+    } else {
+        mes "勝率: ---"
+    }
+
+    ; 勝率バー
+    if total_games > 0 {
+        color 40, 50, 60
+        boxf 20, 570, 400, 585
+
+        ; プレイヤー勝ち（青）
+        color 80, 130, 200
+        pw = player_wins * 380 / total_games
+        if pw > 0 : boxf 20, 570, 20 + pw, 585
+
+        ; あいこ（灰）
+        color 120, 120, 120
+        dw = draws * 380 / total_games
+        if dw > 0 : boxf 20 + pw, 570, 20 + pw + dw, 585
+
+        ; CPU勝ち（赤）
+        color 200, 80, 80
+        cw = 380 - pw - dw
+        if cw > 0 : boxf 20 + pw + dw, 570, 400, 585
+
+        ; ラベル
+        color TEXT_R, TEXT_G, TEXT_B
+        font "MS Gothic", 10
+        pos 22, 572
+        mes "あなた"
+        pos 360, 572
+        mes "CPU"
+    }
+    return
+
+; --- 解説 ---
+*draw_explanation
+    if total_games >= 15 {
+        color ACCENT_R, ACCENT_G, ACCENT_B
+        font "MS Gothic", 12
+        pos 450, 500
+        mes "【仕組み】"
+        pos 450, 518
+        if cheat_on {
+            mes "CPUはあなたのマウス位置を"
+            pos 450, 534
+            mes "見てから手を選んでいます。"
+            pos 450, 552
+            mes "OFFにして違いを確かめましょう。"
+        } else {
+            mes "OFFモードではCPUは完全ランダム。"
+            pos 450, 534
+            mes "理論上の勝率は約33%です。"
+            pos 450, 552
+            mes "ONに戻すと差が歴然です。"
+        }
+    }
+    return
+
+; --- 更新 ---
+*update
+    if state == ST_ANIM {
+        anim_timer--
+        if anim_timer <= 0 {
+            state = ST_RESULT
+            result_timer = 90
+            gosub *judge
+        }
+    }
+    if state == ST_RESULT {
+        result_timer--
+        if result_timer <= 0 {
+            state = ST_CHOOSE
+        }
+    }
+    return
+
+; --- 判定 ---
+*judge
+    total_games++
+    ; 勝敗判定
+    if player_hand == cpu_hand {
+        draws++
+        result_msg = "あいこ！"
+        result_color_r = 200 : result_color_g = 200 : result_color_b = 100
+    } else {
+        ; プレイヤー勝ちパターン: グー→チョキ, チョキ→パー, パー→グー
+        p_wins = 0
+        if player_hand == ROCK     && cpu_hand == SCISSORS : p_wins = 1
+        if player_hand == SCISSORS && cpu_hand == PAPER    : p_wins = 1
+        if player_hand == PAPER    && cpu_hand == ROCK     : p_wins = 1
+
+        if p_wins {
+            player_wins++
+            result_msg = "あなたの勝ち！"
+            result_color_r = 100 : result_color_g = 200 : result_color_b = 255
+        } else {
+            cpu_wins++
+            result_msg = "CPUの勝ち…"
+            result_color_r = 255 : result_color_g = 100 : result_color_b = 100
+        }
+    }
+    return
+
+; --- 入力 ---
+*handle_input
+    stick key, 256
+    if (key & 256) == 0 : return
+
+    mx = mousex : my = mousey
+
+    ; チートトグル
+    if mx >= cheat_bx && mx <= cheat_bx + cheat_bw {
+        if my >= cheat_by && my <= cheat_by + cheat_bh {
+            cheat_on = 1 - cheat_on
+            ; トグル時に統計リセット
+            total_games = 0 : player_wins = 0 : cpu_wins = 0 : draws = 0
+        }
+    }
+
+    ; 手の選択
+    if state == ST_CHOOSE {
+        repeat 3
+            if mx >= btn_x(cnt) && mx <= btn_x(cnt) + btn_w {
+                if my >= btn_y(cnt) && my <= btn_y(cnt) + btn_h {
+                    player_hand = cnt
+                    ; CPUの手を決定
+                    if cheat_on {
+                        ; チートモード: プレイヤーに勝つ手を70%で選ぶ
+                        cheat_roll = rnd(100)
+                        if cheat_roll < 70 {
+                            ; 勝つ手を選ぶ
+                            if player_hand == ROCK     : cpu_hand = PAPER
+                            if player_hand == SCISSORS : cpu_hand = ROCK
+                            if player_hand == PAPER    : cpu_hand = SCISSORS
+                        } else {
+                            if cheat_roll < 85 {
+                                ; あいこ
+                                cpu_hand = player_hand
+                            } else {
+                                ; まれに負ける（バレにくくする）
+                                if player_hand == ROCK     : cpu_hand = SCISSORS
+                                if player_hand == SCISSORS : cpu_hand = PAPER
+                                if player_hand == PAPER    : cpu_hand = ROCK
+                            }
+                        }
+                    } else {
+                        ; 公正モード
+                        cpu_hand = rnd(3)
+                    }
+                    state = ST_ANIM
+                    anim_timer = 40
+                    break
+                }
+            }
+        loop
+    }
+    return

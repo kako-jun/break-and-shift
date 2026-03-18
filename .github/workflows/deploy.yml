@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - claude/*
+  workflow_run:
+    workflows: ['Build HSP experiments']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,6 +21,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,6 +44,27 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Download HSP artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: hsp-*
+          path: dist/hsp/
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Flatten HSP artifact directories
+        run: |
+          if [ -d "dist/hsp" ]; then
+            cd dist/hsp
+            for dir in hsp-*/; do
+              experiment="${dir#hsp-}"
+              experiment="${experiment%/}"
+              if [ -d "$dir" ] && [ -n "$experiment" ]; then
+                mv "$dir" "$experiment" 2>/dev/null || true
+              fi
+            done
+          fi
 
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'
