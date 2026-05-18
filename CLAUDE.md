@@ -11,8 +11,7 @@ src/
 ├── layouts/
 │   └── Layout.astro               # 共通レイアウト（ヘッダー・サイドバー・フッター）
 ├── components/
-│   ├── Sidebar.astro              # サイドバーナビゲーション
-│   └── HspEmbed.astro             # HSP3Dish.js iframe ラッパー（Astro 版）
+│   └── Sidebar.astro              # サイドバーナビゲーション
 ├── data/
 │   └── chapters.ts                # 章定義（Astro / React 共通参照）
 ├── pages/                         # ファイルベースルーティング（Astro）
@@ -26,7 +25,7 @@ src/
 │   ├── Chapter1.tsx 〜 Chapter5.tsx
 │   ├── Chinchirorin.tsx 〜 AncestorProbability.tsx
 │   ├── NotFound.tsx
-│   └── HspEmbed.tsx               # React 側用（一部 React ページから直接利用）
+│   └── HspEmbed.tsx               # HSP3Dish.js iframe ラッパー（HSP 系 7 ページから利用）
 └── styles/
     └── globals.css                # グローバルスタイル + Tailwind directives
 ```
