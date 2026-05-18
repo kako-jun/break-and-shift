@@ -6,35 +6,45 @@
 
 ```
 src/
-├── main.tsx                     # エントリーポイント
-├── App.tsx                      # ルーティング定義
+├── env.d.ts                       # Astro 型参照
+├── astro.config.mjs               # base: '/break-and-shift', integrations
+├── layouts/
+│   └── Layout.astro               # 共通レイアウト（ヘッダー・サイドバー・フッター）
 ├── components/
-│   ├── Layout.tsx               # 共通レイアウト
-│   └── HspEmbed.tsx             # HSP3Dish.js埋め込みコンポーネント
-├── pages/
-│   ├── Home.tsx                 # ホームページ
-│   ├── Chapter1.tsx             # 確率と割合の境界線
-│   ├── Chapter2.tsx             # 祈りは確率を変えない
-│   ├── Chapter3.tsx             # 進化のトーナメント
-│   ├── Chapter4.tsx             # ガチャの天井
-│   ├── Chapter5.tsx             # 確率の森で迷う
-│   ├── Chinchirorin.tsx         # 3Dサイコロシミュレーター
-│   ├── ClawMachine.tsx          # クレーンゲーム
-│   ├── SlotMachine.tsx          # スロット
-│   ├── Janken.tsx               # じゃんけん
-│   ├── RainWalk.tsx             # 雨の中を走るか歩くか
-│   ├── SurvivorBias.tsx         # 生存者バイアス
-│   └── AncestorProbability.tsx  # 前世と先祖
+│   ├── Sidebar.astro              # サイドバーナビゲーション
+│   └── HspEmbed.astro             # HSP3Dish.js iframe ラッパー（Astro 版）
+├── data/
+│   └── chapters.ts                # 章定義（Astro / React 共通参照）
+├── pages/                         # ファイルベースルーティング（Astro）
+│   ├── index.astro                # トップ
+│   ├── chapter1.astro 〜 chapter5.astro
+│   ├── chinchirorin.astro / claw-machine.astro / slot-machine.astro
+│   ├── janken.astro / rain-walk.astro / survivor-bias.astro / ancestor-probability.astro
+│   └── 404.astro
+├── react/                         # React Islands（client:load で hydration）
+│   ├── Home.tsx
+│   ├── Chapter1.tsx 〜 Chapter5.tsx
+│   ├── Chinchirorin.tsx 〜 AncestorProbability.tsx
+│   ├── NotFound.tsx
+│   └── HspEmbed.tsx               # React 側用（一部 React ページから直接利用）
 └── styles/
-    └── index.css                # グローバルスタイル
+    └── globals.css                # グローバルスタイル + Tailwind directives
 ```
 
 ## 技術詳細
 
-### HSP3Dish.js統合
+### Astro Islands 構成
 
-- HSP3Dish.jsでインタラクティブシミュレーションを埋め込み
-- HspEmbedコンポーネントで統一的に管理
+- Astro ページ（`*.astro`）はファイルベースルーティングを提供する SSG
+- 各ページは Layout.astro で共通装飾を巻き、React コンポーネントを `<Component client:load />` で島として埋め込む
+- ルーティングは Astro が担当、`react-router-dom` は撤去済み
+- ページ内のリンクは `import.meta.env.BASE_URL` ベースで `/break-and-shift/...` に解決
+
+### HSP3Dish.js 統合
+
+- iframe で `${BASE_URL}/hsp/${experiment}/index.html` を読み込む
+- `public/hsp/` は空（CI artifact 受け皿）。`build-hsp.yml` が各 experiment を artifact 化し、`deploy.yml` が `dist/hsp/{experiment}/` に展開
+- `base: '/break-and-shift'` を維持しないと iframe src が壊れるので注意
 
 ### 統計検定
 
@@ -49,26 +59,33 @@ src/
 
 ## 依存パッケージ
 
-| パッケージ       | 用途                             |
-| ---------------- | -------------------------------- |
-| react            | UI                               |
-| react-router-dom | ルーティング                     |
-| HSP3Dish.js      | インタラクティブシミュレーション |
-| tailwindcss      | スタイリング                     |
+| パッケージ        | 用途                                       |
+| ----------------- | ------------------------------------------ |
+| astro             | SSG + Islands                              |
+| @astrojs/react    | React 統合                                 |
+| @astrojs/tailwind | Tailwind 統合                              |
+| @astrojs/sitemap  | sitemap 生成                               |
+| react / react-dom | Islands 本体                               |
+| tailwindcss       | スタイリング                               |
+| HSP3Dish.js       | インタラクティブシミュレーション（iframe） |
+
+パッケージマネージャは pnpm を採用。
 
 ## ビルド
 
 ```bash
-npm run dev          # 開発サーバー
-npm run build        # プロダクションビルド
-npm run lint         # ESLint
-npm run format       # Prettier
+pnpm dev          # 開発サーバー (Astro)
+pnpm build        # astro check + astro build → dist/
+pnpm preview      # ビルド結果をローカル確認
+pnpm lint         # ESLint
+pnpm format       # Prettier
 ```
 
 ## CI/CD
 
-- **deploy.yml**: GitHub Pagesへ自動デプロイ
-- **Husky + lint-staged**: pre-commit hooks
+- **deploy.yml**: pnpm でビルド → `dist/hsp/{experiment}/` に HSP artifact 展開 → GitHub Pages
+- **build-hsp.yml**: HSP 各 experiment を `hsp-{experiment}` artifact として保存（無変更）
+- **Husky + lint-staged**: pre-commit hooks（eslint + prettier）
 
 ## 将来計画
 

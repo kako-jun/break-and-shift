@@ -36,18 +36,26 @@
 ```bash
 git clone https://github.com/kako-jun/break-and-shift.git
 cd break-and-shift
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-http://localhost:5173/break-and-shift/ で開く
+http://localhost:4321/break-and-shift/ で開く（Astro の既定ポート）
+
+## ビルド
+
+```bash
+pnpm build      # astro check + astro build → dist/
+pnpm preview    # ビルド結果をローカル確認
+```
 
 ## 技術スタック
 
-- React 18 + TypeScript
-- Vite
-- HSP3Dish.js（インタラクティブシミュレーション）
-- Tailwind CSS
+- Astro 5（ファイルベースルーティング、`base: '/break-and-shift'`）
+- React 18 + TypeScript（Astro Islands、`client:load` で hydration）
+- HSP3Dish.js（インタラクティブシミュレーション、`dist/hsp/{experiment}/` に CI が展開）
+- Tailwind CSS 3
+- pnpm（lockfile 管理）
 
 ## ライセンス
 
