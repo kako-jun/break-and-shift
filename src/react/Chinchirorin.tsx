@@ -1,4 +1,4 @@
-import HspEmbed from '../components/HspEmbed';
+import HspEmbed from './HspEmbed';
 
 export default function Chinchirorin() {
   return (
