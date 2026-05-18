@@ -86,9 +86,28 @@ export const chapters: Chapter[] = [
   },
 ];
 
-/** サイドバー用に短いタイトルを返す（必要に応じて将来分岐） */
+/**
+ * サイドバー用に短いタイトルを返す。
+ * 旧 React 版 `src/components/Layout.tsx`（移行前 commit e32f0d4）で
+ * 使われていた短縮タイトルに合わせている。
+ */
+const sidebarTitles: Record<string, string> = {
+  '/chapter1': '第一章：確率と割合の境界線',
+  '/chapter2': '第二章：祈りは確率を変えない',
+  '/chapter3': '第三章：進化のトーナメント',
+  '/chapter4': '第四章：ガチャの天井と煽り文句',
+  '/chapter5': '第五章：確率の森で迷う',
+  '/chinchirorin': '特別編：チンチロリン',
+  '/claw-machine': '特別編：クレーンゲーム',
+  '/slot-machine': '特別編：スロットマシン',
+  '/janken': '特別編：じゃんけん',
+  '/rain-walk': '特別編：雨の中の歩行',
+  '/survivor-bias': '特別編：生存者バイアス',
+  '/ancestor-probability': '特別編：先祖の確率',
+};
+
 export const sidebarChapters = chapters.map(c => ({
   id: c.id,
-  title: c.title,
+  title: sidebarTitles[c.path] ?? c.title,
   path: c.path,
 }));
