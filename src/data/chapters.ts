@@ -10,8 +10,7 @@ export const chapters: Chapter[] = [
     id: 1,
     title: '第一章：確率と割合の境界線',
     path: '/chapter1',
-    description:
-      '漫画家になれる確率と漫画家の割合——この二つの違いを理解する',
+    description: '漫画家になれる確率と漫画家の割合——この二つの違いを理解する',
   },
   {
     id: 2,
@@ -83,8 +82,7 @@ export const chapters: Chapter[] = [
     id: 12,
     title: '特別編：前世と先祖の確率詐欺',
     path: '/ancestor-probability',
-    description:
-      '前世が有名人？先祖が桓武天皇？確率で計算すれば詐欺だとわかる',
+    description: '前世が有名人？先祖が桓武天皇？確率で計算すれば詐欺だとわかる',
   },
 ];
 

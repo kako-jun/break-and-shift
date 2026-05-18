@@ -1,0 +1,53 @@
+---
+import { sidebarChapters } from '../data/chapters';
+
+interface Props {
+  currentPath?: string;
+}
+
+const { currentPath = '/' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const href = (path: string) => `${base}${path}`;
+
+function isActive(path: string) {
+  if (path === '/') {
+    return currentPath === '/' || currentPath === '';
+  }
+  return currentPath === path || currentPath === `${path}/`;
+}
+---
+
+<aside
+  class="w-64 min-h-screen border-r border-boundary-blue/30 bg-boundary-indigo/20 hidden lg:block"
+>
+  <div class="sticky top-16 p-6">
+    <nav class="space-y-2">
+      <a
+        href={href('/')}
+        class:list={[
+          'block px-4 py-2 rounded transition-all duration-300',
+          isActive('/')
+            ? 'bg-boundary-blue text-boundary-silver'
+            : 'text-boundary-mist hover:text-boundary-silver hover:bg-boundary-blue/50',
+        ]}
+      >
+        序章
+      </a>
+      {
+        sidebarChapters.map(chapter => (
+          <a
+            href={href(chapter.path)}
+            class:list={[
+              'block px-4 py-2 rounded transition-all duration-300',
+              isActive(chapter.path)
+                ? 'bg-boundary-blue text-boundary-silver'
+                : 'text-boundary-mist hover:text-boundary-silver hover:bg-boundary-blue/50',
+            ]}
+          >
+            {chapter.title}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</aside>
