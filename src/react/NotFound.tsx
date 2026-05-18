@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
 
 export default function NotFound() {
   return (
@@ -21,12 +21,12 @@ export default function NotFound() {
         </div>
       </section>
 
-      <Link
-        to="/"
+      <a
+        href={`${base}/`}
         className="inline-block px-6 py-3 bg-boundary-blue text-boundary-silver rounded hover:bg-boundary-blue/80 transition-colors duration-300"
       >
         序章に戻る
-      </Link>
+      </a>
     </div>
   );
 }

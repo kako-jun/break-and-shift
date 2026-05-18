@@ -4,6 +4,8 @@ interface HspEmbedProps {
   aspectRatio?: string;
 }
 
+const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+
 export default function HspEmbed({
   experiment,
   title,
@@ -15,7 +17,7 @@ export default function HspEmbed({
       style={{ aspectRatio }}
     >
       <iframe
-        src={`/break-and-shift/hsp/${experiment}/index.html`}
+        src={`${base}/hsp/${experiment}/index.html`}
         className="w-full h-full border-0"
         allow="autoplay"
         title={title}
