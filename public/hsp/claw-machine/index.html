@@ -98,6 +98,16 @@
         ENV.HSP_FPS = "0";
         // Max HSP steps per frame before yielding to browser
         ENV.HSP_LIMIT_STEP = "15000";
+        // Emscripten 3.1.42+ では FS_createDataFile/Path/Device が EXPORTED_RUNTIME_METHODS
+        // に明示指定しないと未 export。OpenHSP makefile を弄らず alias で逃がす。
+        if (typeof FS !== 'undefined') {
+          if (!Module.FS_createDataFile) Module.FS_createDataFile = FS.createDataFile;
+          if (!Module.FS_createPath) Module.FS_createPath = FS.createPath;
+          if (!Module.FS_createDevice) Module.FS_createDevice = FS.createDevice;
+          if (!Module.FS_createPreloadedFile) Module.FS_createPreloadedFile = FS.createPreloadedFile;
+          if (!Module.FS_createLazyFile) Module.FS_createLazyFile = FS.createLazyFile;
+          if (!Module.FS_createLink) Module.FS_createLink = FS.createLink;
+        }
       }],
       postRun: [],
       print: (function() {
