@@ -7,7 +7,7 @@
 ```
 src/
 ├── env.d.ts                       # Astro 型参照
-├── astro.config.mjs               # base: '/break-and-shift', integrations
+├── astro.config.mjs               # site: break-and-shift.llll-ll.com, integrations
 ├── layouts/
 │   └── Layout.astro               # 共通レイアウト（ヘッダー・サイドバー・フッター）
 ├── components/
@@ -37,13 +37,12 @@ src/
 - Astro ページ（`*.astro`）はファイルベースルーティングを提供する SSG
 - 各ページは Layout.astro で共通装飾を巻き、React コンポーネントを `<Component client:load />` で島として埋め込む
 - ルーティングは Astro が担当、`react-router-dom` は撤去済み
-- ページ内のリンクは `import.meta.env.BASE_URL` ベースで `/break-and-shift/...` に解決
+- ページ内のリンクは `import.meta.env.BASE_URL` ベース（CF Pages 配信では `/`）に解決
 
 ### HSP3Dish.js 統合
 
 - iframe で `${BASE_URL}/hsp/${experiment}/index.html` を読み込む
-- `public/hsp/` は空（CI artifact 受け皿）。`build-hsp.yml` が各 experiment を artifact 化し、`deploy.yml` が `dist/hsp/{experiment}/` に展開
-- `base: '/break-and-shift'` を維持しないと iframe src が壊れるので注意
+- `public/hsp/` は空。`build-hsp.yml` で artifact 化される仕組みが残っているが、CF Pages 移行後は連携未配線。HSP 部分は別 Issue で再配線予定
 
 ### 統計検定
 

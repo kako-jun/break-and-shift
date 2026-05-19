@@ -40,7 +40,7 @@ pnpm install
 pnpm dev
 ```
 
-http://localhost:4321/break-and-shift/ で開く（Astro の既定ポート）
+http://localhost:4321/ で開く（Astro の既定ポート）
 
 ## ビルド
 
@@ -51,7 +51,7 @@ pnpm preview    # ビルド結果をローカル確認
 
 ## 技術スタック
 
-- Astro 5（ファイルベースルーティング、`base: '/break-and-shift'`）
+- Astro 5（ファイルベースルーティング）
 - React 18 + TypeScript（Astro Islands、`client:load` で hydration）
 - HSP3Dish.js（インタラクティブシミュレーション、`dist/hsp/{experiment}/` に CI が展開）
 - Tailwind CSS 3

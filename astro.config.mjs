@@ -5,8 +5,7 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://kako-jun.github.io',
-  base: '/break-and-shift',
+  site: 'https://break-and-shift.llll-ll.com',
   trailingSlash: 'ignore',
   integrations: [tailwind(), react(), sitemap()],
   build: {
