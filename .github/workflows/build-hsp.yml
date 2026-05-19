@@ -36,7 +36,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: runtime-out
-          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}-patched-fs4
+          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}-patched-fs5
 
       - name: Checkout OpenHSP
         if: steps.cache-runtime.outputs.cache-hit != 'true'
@@ -69,28 +69,36 @@ jobs:
         working-directory: OpenHSP
         run: make -f makefile.emscripten -j$(nproc)
 
-      - name: Patch hsp3dish.js to bind FS_createDataFile to local fn
+      - name: Patch hsp3dish.js to bind FS_createDataFile to local fn (conditional)
         if: steps.cache-runtime.outputs.cache-hit != 'true'
         working-directory: OpenHSP
         run: |
-          # Emscripten 3.1.74 では FS.createDataFile プロパティが存在せず
+          # 新しい Emscripten (3.1.74 等) では FS.createDataFile プロパティが存在せず
           # Module["FS_createDataFile"]=FS.createDataFile が undefined を代入する。
           # ローカル関数 FS_createDataFile はあるのでそれを使うように直す。
-          # 同じ理由で createDevice/createPath も念のため差し替える。
-          before=$(grep -c "Module\[\"FS_createDataFile\"\]=FS\.createDataFile" hsp3dish.js || true)
-          echo "Before patch: FS.createDataFile occurrences = $before"
-          sed -i 's/Module\["FS_createDataFile"\]=FS\.createDataFile/Module["FS_createDataFile"]=FS_createDataFile/g' hsp3dish.js
-          sed -i 's/Module\["FS_createDevice"\]=FS\.createDevice/Module["FS_createDevice"]=FS_createDevice/g' hsp3dish.js
-          after_data=$(grep -c "Module\[\"FS_createDataFile\"\]=FS_createDataFile" hsp3dish.js || true)
-          after_dev=$(grep -c "Module\[\"FS_createDevice\"\]=FS_createDevice" hsp3dish.js || true)
-          echo "After: FS_createDataFile bind = $after_data, FS_createDevice bind = $after_dev"
-          # 古い Emscripten (3.1.42 等) では元から FS_createDataFile が
-          # 正しく export されていて Module["FS_createDataFile"]=FS_createDataFile
-          # の形になっている。sed 不要なので 0 でも fail させない。
-          # 注意: その場合は Module.FS_createDataFile が動くか playwright 等で検証する。
-          if [ "$before" -eq 0 ] && [ "$after_data" -eq 0 ]; then
-            echo "INFO: no FS.createDataFile assignment found; runtime likely already exports it natively"
-          fi
+          # ただし古い Emscripten (3.1.50 等) では元から FS_createDataFile が
+          # 正しく export されていて、 var FS_createDevice 自体が存在しない場合がある。
+          # 不用意に sed すると未定義参照を引き起こすので、
+          # 「bad form があり、かつ対応する local var が存在する」場合だけパッチする。
+          for sym in FS_createDataFile FS_createDevice; do
+            bad="Module[\"$sym\"]=FS.${sym#FS_}"
+            good="Module[\"$sym\"]=$sym"
+            # ${sym#FS_} doesn't lowercase first letter; explicit mapping
+            case $sym in
+              FS_createDataFile) bad='Module["FS_createDataFile"]=FS.createDataFile' ;;
+              FS_createDevice)   bad='Module["FS_createDevice"]=FS.createDevice' ;;
+            esac
+            has_bad=$(grep -cF "$bad" hsp3dish.js || true)
+            has_local=$(grep -cE "var\\s+$sym\\s*=" hsp3dish.js || true)
+            echo "$sym: bad_form=$has_bad local_var_decl=$has_local"
+            if [ "$has_bad" -gt 0 ] && [ "$has_local" -gt 0 ]; then
+              sed -i "s|$bad|$good|g" hsp3dish.js
+              after=$(grep -cF "$good" hsp3dish.js || true)
+              echo "  → patched, now $sym binding=$after"
+            else
+              echo "  → skip (either already correct or local var missing)"
+            fi
+          done
 
       - name: Collect runtime files
         if: steps.cache-runtime.outputs.cache-hit != 'true'
