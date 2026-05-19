@@ -409,6 +409,9 @@ jobs:
           # Pretty title from experiment name
           $title = ($exp -replace '-', ' ').ToUpper().Substring(0,1) + ($exp -replace '-', ' ').Substring(1)
 
+          # build id (epoch seconds) for cache busting script src URLs
+          $buildId = [int][double]::Parse((Get-Date -UFormat %s))
+
           $html = $template `
             -replace '{{TITLE}}', $title `
             -replace '{{EXPERIMENT}}', $exp `
@@ -416,7 +419,8 @@ jobs:
             -replace '{{HSP_WY}}', $hspWy `
             -replace '{{HSP_SX}}', $hspSx `
             -replace '{{HSP_SY}}', $hspSy `
-            -replace '{{HSP_AUTOSCALE}}', $autoScale
+            -replace '{{HSP_AUTOSCALE}}', $autoScale `
+            -replace '{{BUILD_ID}}', $buildId
 
           $html | Set-Content "$outDir/index.html" -Encoding UTF8
 
@@ -485,5 +489,9 @@ jobs:
             echo "No HSP changes to commit."
             exit 0
           fi
-          git commit -m "ci(hsp): rebuild HSP experiments [skip ci]"
+          # CF Pages git 連携は [skip ci] / [ci skip] を honor してデプロイを
+          # スキップしてしまう。public/hsp/ の更新を確実に配信するため省略する。
+          # build-hsp.yml は hsp/** 変更時のみ発火するので、public/hsp/ への
+          # commit-back では再帰トリガーされない（パスフィルタが効く）。
+          git commit -m "ci(hsp): rebuild HSP experiments"
           git push origin main
