@@ -16,6 +16,8 @@ env:
   # Emscripten version (needed for file_packager.py to create .data bundles)
   EM_VERSION: '3.1.74'
   EM_CACHE_FOLDER: 'emsdk-cache'
+  # 3rd party JS actions（setup-emsdk 等）を Node 24 で動かして deprecation 警告を消す
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   # ---------------------------------------------------------------
@@ -28,14 +30,14 @@ jobs:
     steps:
       - name: Cache runtime artifacts
         id: cache-runtime
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: runtime-out
           key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}
 
       - name: Checkout OpenHSP
         if: steps.cache-runtime.outputs.cache-hit != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: onitama/OpenHSP
           ref: v3.7
@@ -62,7 +64,7 @@ jobs:
           ls -la runtime-out/
 
       - name: Upload runtime
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hsp3dish-runtime
           path: runtime-out/
@@ -88,10 +90,10 @@ jobs:
           - ancestor-probability
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download hsp3dish.js runtime
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: hsp3dish-runtime
           path: runtime
@@ -99,7 +101,7 @@ jobs:
       # --- Get HSP compiler (hspcmp.exe) from release ---
       - name: Cache HSP release
         id: cache-hsp
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: hsp3
           key: hsp37en-release-v3.7
@@ -395,7 +397,7 @@ jobs:
           Get-ChildItem $outDir | Format-Table Name, Length
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: hsp-${{ matrix.experiment }}
           path: public/hsp/${{ matrix.experiment }}/
@@ -413,13 +415,13 @@ jobs:
       contents: write
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: merged
           pattern: hsp-*
