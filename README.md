@@ -7,8 +7,8 @@
 ## 特徴
 
 - 確率と割合の違いをインタラクティブに学習
-- 3Dサイコロシミュレーション（HSP3Dish.js）
-- 各種確率シミュレーター
+- 3Dサイコロシミュレーション（Three.js + cannon-es 予定）
+- 各種確率シミュレーター（PixiJS 予定）
 - 統計的検定（カイ二乗検定）の可視化
 
 ## コンテンツ
@@ -53,9 +53,10 @@ pnpm preview    # ビルド結果をローカル確認
 
 - Astro 5（ファイルベースルーティング）
 - React 18 + TypeScript（Astro Islands、`client:load` で hydration）
-- HSP3Dish.js（インタラクティブシミュレーション、`dist/hsp/{experiment}/` に CI が展開）
+- PixiJS / Three.js + cannon-es（各 experiment のインタラクティブ実装、順次着手）
 - Tailwind CSS 3
 - pnpm（lockfile 管理）
+- Cloudflare Pages git 連携で `break-and-shift.llll-ll.com` に自動デプロイ
 
 ## ライセンス
 

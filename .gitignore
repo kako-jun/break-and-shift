@@ -30,5 +30,3 @@ dist-ssr
 # Security & build
 .env
 
-# HSP ビルド成果物は CI が public/hsp/{exp}/ に commit する運用
-# （CF Pages git 連携で配信するため、成果物もリポに含める）

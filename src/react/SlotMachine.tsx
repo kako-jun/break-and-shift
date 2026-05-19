@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function SlotMachine() {
   return (
@@ -34,7 +34,7 @@ export default function SlotMachine() {
           スロットシミュレーター
         </h2>
 
-        <HspEmbed experiment="slot-machine" title="スロットの演出詐欺" />
+        <ComingSoon title="スロットの演出詐欺" />
       </section>
 
       <div className="boundary-line" />

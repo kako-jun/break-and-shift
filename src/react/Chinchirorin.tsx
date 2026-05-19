@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function Chinchirorin() {
   return (
@@ -29,10 +29,7 @@ export default function Chinchirorin() {
           3D物理シミュレーション
         </h2>
 
-        <HspEmbed
-          experiment="chinchirorin"
-          title="チンチロリン：3Dサイコロシミュレーター"
-        />
+        <ComingSoon title="チンチロリン：3Dサイコロシミュレーター" />
       </section>
 
       <div className="boundary-line" />

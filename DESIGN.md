@@ -4,7 +4,7 @@ Break and Shift — Design System
 
 ## 1. Visual Theme & Atmosphere
 
-Dark noir investigation. Protagonist "境界ユウ" (Boundary Yū) guides the reader through probability theory in a philosophical, atmospheric narrative. Deep oceanic blues and silver text create an underwater feeling — as if exploring the depths of mathematical truth. Serif typography adds literary weight. HSP3Dish.js simulators embed as portals into the experiments.
+Dark noir investigation. Protagonist "境界ユウ" (Boundary Yū) guides the reader through probability theory in a philosophical, atmospheric narrative. Deep oceanic blues and silver text create an underwater feeling — as if exploring the depths of mathematical truth. Serif typography adds literary weight. Interactive probability experiments are mounted inline (PixiJS/Three.js, planned).
 
 Inspirations: detective noir fiction, deep-sea exploration UIs, academic textbook layouts.
 
@@ -88,7 +88,7 @@ my-12 opacity-30
 
 Subtle cyan gradient line between sections.
 
-### HSP Embed
+### Experiment Embed
 
 ```
 w-full rounded-lg overflow-hidden
@@ -96,7 +96,7 @@ border border-boundary-blue/30 bg-black
 aspect-ratio: 4/3
 ```
 
-Black background iframe for HSP3Dish.js simulators.
+Black background container for inline experiment canvases.
 
 ### Range Input (Sliders)
 
@@ -165,7 +165,7 @@ min-h-screen bg-boundary-darker
 
 - Buttons: `rounded` (4px)
 - Containers: `rounded-lg` (8px)
-- HSP embed: `rounded-lg`
+- Experiment embed: `rounded-lg`
 
 ### Z-Index
 
@@ -182,7 +182,7 @@ min-h-screen bg-boundary-darker
 - Keep the 7-color palette strict — no additional colors
 - Use opacity modifiers (`/20`, `/30`, `/50`) for subtle variations
 - Apply `transition-all duration-300` on all interactive elements
-- Give HSP embeds black backgrounds with subtle blue borders
+- Give Experiment embeds black backgrounds with subtle blue borders
 
 ### Don't
 
@@ -234,7 +234,7 @@ boundary-mist:    #8b95a8  (secondary text)
 - Noto Serif JP for narrative, Noto Sans JP for UI — never mix them wrong
 - `.monologue` class for protagonist's voice: serif, tracked, relaxed leading
 - 7 named colors in Tailwind config, modulated with opacity
-- HSP3Dish.js embeds in iframes with black bg + subtle blue border
+- Experiment embeds (PixiJS / Three.js) with black bg + subtle blue border
 - Cyan gradient dividers (`.boundary-line`) between sections
 - `backdrop-blur-md` on sticky navigation
 - Sidebar at `w-64`, hidden on mobile

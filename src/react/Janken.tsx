@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function Janken() {
   return (
@@ -34,7 +34,7 @@ export default function Janken() {
           じゃんけん対戦
         </h2>
 
-        <HspEmbed experiment="janken" title="じゃんけんの後出し必勝法" />
+        <ComingSoon title="じゃんけんの後出し必勝法" />
       </section>
 
       <div className="boundary-line" />

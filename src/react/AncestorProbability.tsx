@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function AncestorProbability() {
   return (
@@ -37,10 +37,7 @@ export default function AncestorProbability() {
           先祖の数シミュレーター
         </h2>
 
-        <HspEmbed
-          experiment="ancestor-probability"
-          title="前世と先祖の確率詐欺"
-        />
+        <ComingSoon title="前世と先祖の確率詐欺" />
       </section>
 
       <div className="boundary-line" />

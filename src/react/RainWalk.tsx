@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function RainWalk() {
   return (
@@ -34,10 +34,7 @@ export default function RainWalk() {
           濡れる量の比較シミュレーター
         </h2>
 
-        <HspEmbed
-          experiment="rain-walk"
-          title="雨の中は走るべきか、歩くべきか"
-        />
+        <ComingSoon title="雨の中は走るべきか、歩くべきか" />
       </section>
 
       <div className="boundary-line" />

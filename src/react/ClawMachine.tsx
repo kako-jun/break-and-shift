@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function ClawMachine() {
   return (
@@ -32,10 +32,7 @@ export default function ClawMachine() {
           クレーンゲームシミュレーター
         </h2>
 
-        <HspEmbed
-          experiment="claw-machine"
-          title="クレーンゲームの期待値操作"
-        />
+        <ComingSoon title="クレーンゲームの期待値操作" />
       </section>
 
       <div className="boundary-line" />

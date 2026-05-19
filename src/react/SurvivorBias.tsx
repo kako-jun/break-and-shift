@@ -1,4 +1,4 @@
-import HspEmbed from './HspEmbed';
+import ComingSoon from './ComingSoon';
 
 export default function SurvivorBias() {
   return (
@@ -34,10 +34,7 @@ export default function SurvivorBias() {
           恒星の寿命分布シミュレーター
         </h2>
 
-        <HspEmbed
-          experiment="survivor-bias"
-          title="生存者バイアスと地球の突然死"
-        />
+        <ComingSoon title="生存者バイアスと地球の突然死" />
       </section>
 
       <div className="boundary-line" />

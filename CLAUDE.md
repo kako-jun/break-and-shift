@@ -25,7 +25,7 @@ src/
 │   ├── Chapter1.tsx 〜 Chapter5.tsx
 │   ├── Chinchirorin.tsx 〜 AncestorProbability.tsx
 │   ├── NotFound.tsx
-│   └── HspEmbed.tsx               # HSP3Dish.js iframe ラッパー（HSP 系 7 ページから利用）
+│   └── ComingSoon.tsx             # experiment 未実装のプレースホルダ（PixiJS 実装まで一時表示）
 └── styles/
     └── globals.css                # グローバルスタイル + Tailwind directives
 ```
@@ -39,13 +39,12 @@ src/
 - ルーティングは Astro が担当、`react-router-dom` は撤去済み
 - ページ内のリンクは `import.meta.env.BASE_URL` ベース（CF Pages 配信では `/`）に解決
 
-### HSP3Dish.js 統合
+### Experiment（旧 HSP3Dish.js 統合）
 
-- iframe で `${BASE_URL}/hsp/${experiment}/index.html` を読み込む
-- `build-hsp.yml` が `hsp/**` 変更時にトリガーされ、Windows runner で各 experiment をビルド
-  → 最終 `commit` job が `public/hsp/{exp}/` に成果物を集約して main に push（`[skip ci]`）
-  → CF Pages（git 連携、main 監視）が自動デプロイ
-- `public/hsp/` 配下は CI 産。手動で触る必要なし。.gitignore で除外していたが現在は commit する運用
+- 旧構成: HSP3Dish JS（OpenHSP v3.7）を iframe で埋め込み。OpenHSP の Emscripten ポートが Emscripten 1.34.1 時代のままで現代 Emscripten 3.1.x と非互換 → 「Startup failed」で動かず撤去
+- 現構成: **PixiJS を React コンポーネントとして各ページに直接埋め込む**方針（chinchirorin の 3D 物理だけ Three.js + cannon-es）
+- 各 experiment コンポーネント (`src/react/Chinchirorin.tsx` 等) は現在 `<ComingSoon />` プレースホルダ。本実装は別 Issue で順次対応
+- iframe ラッパー (`HspEmbed.tsx`) は削除済み。Astro Islands で React コンポーネントを直接 hydrate するので iframe 不要
 
 ### 統計検定
 
@@ -60,15 +59,16 @@ src/
 
 ## 依存パッケージ
 
-| パッケージ        | 用途                                       |
-| ----------------- | ------------------------------------------ |
-| astro             | SSG + Islands                              |
-| @astrojs/react    | React 統合                                 |
-| @astrojs/tailwind | Tailwind 統合                              |
-| @astrojs/sitemap  | sitemap 生成                               |
-| react / react-dom | Islands 本体                               |
-| tailwindcss       | スタイリング                               |
-| HSP3Dish.js       | インタラクティブシミュレーション（iframe） |
+| パッケージ        | 用途                                                     |
+| ----------------- | -------------------------------------------------------- |
+| astro             | SSG + Islands                                            |
+| @astrojs/react    | React 統合                                               |
+| @astrojs/tailwind | Tailwind 統合                                            |
+| @astrojs/sitemap  | sitemap 生成                                             |
+| react / react-dom | Islands 本体                                             |
+| tailwindcss       | スタイリング                                             |
+| pixi.js (予定)    | インタラクティブシミュレーション（React 内に直接 mount） |
+| three.js (予定)   | chinchirorin の 3D サイコロ物理（+ cannon-es）           |
 
 パッケージマネージャは pnpm を採用。
 
@@ -84,8 +84,7 @@ pnpm format       # Prettier
 
 ## CI/CD
 
-- **deploy.yml**: pnpm でビルド → `dist/hsp/{experiment}/` に HSP artifact 展開 → GitHub Pages
-- **build-hsp.yml**: HSP 各 experiment を `hsp-{experiment}` artifact として保存（無変更）
+- **CF Pages git 連携**: main への push で Astro ビルド → `break-and-shift.llll-ll.com` に自動デプロイ
 - **Husky + lint-staged**: pre-commit hooks（eslint + prettier）
 
 ## 将来計画
