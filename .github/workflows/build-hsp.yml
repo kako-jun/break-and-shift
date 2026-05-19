@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: runtime-out
-          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}-patched-fs2
+          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}-patched-fs3
 
       - name: Checkout OpenHSP
         if: steps.cache-runtime.outputs.cache-hit != 'true'
@@ -67,6 +67,25 @@ jobs:
         if: steps.cache-runtime.outputs.cache-hit != 'true'
         working-directory: OpenHSP
         run: make -f makefile.emscripten -j$(nproc)
+
+      - name: Patch hsp3dish.js to bind FS_createDataFile to local fn
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        working-directory: OpenHSP
+        run: |
+          # Emscripten 3.1.74 では FS.createDataFile プロパティが存在せず
+          # Module["FS_createDataFile"]=FS.createDataFile が undefined を代入する。
+          # ローカル関数 FS_createDataFile はあるのでそれを使うように直す。
+          # 同じ理由で createDevice/createPath も念のため差し替える。
+          before=$(grep -c "Module\[\"FS_createDataFile\"\]=FS\.createDataFile" hsp3dish.js || true)
+          echo "Before patch: FS.createDataFile occurrences = $before"
+          sed -i 's/Module\["FS_createDataFile"\]=FS\.createDataFile/Module["FS_createDataFile"]=FS_createDataFile/g' hsp3dish.js
+          sed -i 's/Module\["FS_createDevice"\]=FS\.createDevice/Module["FS_createDevice"]=FS_createDevice/g' hsp3dish.js
+          after_data=$(grep -c "Module\[\"FS_createDataFile\"\]=FS_createDataFile" hsp3dish.js || true)
+          after_dev=$(grep -c "Module\[\"FS_createDevice\"\]=FS_createDevice" hsp3dish.js || true)
+          echo "After: FS_createDataFile bind = $after_data, FS_createDevice bind = $after_dev"
+          if [ "$after_data" -eq 0 ]; then
+            echo "ERROR: patch did not apply to FS_createDataFile"; exit 1
+          fi
 
       - name: Collect runtime files
         if: steps.cache-runtime.outputs.cache-hit != 'true'
