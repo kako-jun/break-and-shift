@@ -402,12 +402,22 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------
-  # Step 3: Merge all experiment artifacts into one
+  # Step 3: Commit built HSP artifacts back to main so CF Pages
+  # (git integration) picks them up and deploys them.
   # ---------------------------------------------------------------
-  merge:
+  commit:
     needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -415,21 +425,31 @@ jobs:
           pattern: hsp-*
           merge-multiple: false
 
-      - name: Organize output
+      - name: Place artifacts under public/hsp/
         run: |
-          mkdir -p output/hsp
+          mkdir -p public/hsp
           for dir in merged/hsp-*/; do
+            [ -d "$dir" ] || continue
             exp=$(basename "$dir" | sed 's/^hsp-//')
-            if [ -d "$dir" ] && [ "$(ls -A "$dir")" ]; then
-              cp -r "$dir" "output/hsp/$exp"
-              echo "Merged: $exp"
+            # runtime artifact (hsp3dish-runtime) は exp ではないので除外
+            if [ "$exp" = "3dish-runtime" ] || [ "$exp" = "all-experiments" ]; then
+              continue
             fi
+            rm -rf "public/hsp/$exp"
+            cp -r "$dir" "public/hsp/$exp"
+            echo "Placed: public/hsp/$exp"
           done
-          echo "=== Final structure ==="
-          find output -type f | head -50
+          echo "=== public/hsp/ tree ==="
+          find public/hsp -type f | head -80
 
-      - name: Upload merged artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: hsp-all-experiments
-          path: output/
+      - name: Commit & push HSP artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/hsp/
+          if git diff --cached --quiet; then
+            echo "No HSP changes to commit."
+            exit 0
+          fi
+          git commit -m "ci(hsp): rebuild HSP experiments [skip ci]"
+          git push origin main

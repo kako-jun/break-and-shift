@@ -42,7 +42,10 @@ src/
 ### HSP3Dish.js 統合
 
 - iframe で `${BASE_URL}/hsp/${experiment}/index.html` を読み込む
-- `public/hsp/` は空。`build-hsp.yml` で artifact 化される仕組みが残っているが、CF Pages 移行後は連携未配線。HSP 部分は別 Issue で再配線予定
+- `build-hsp.yml` が `hsp/**` 変更時にトリガーされ、Windows runner で各 experiment をビルド
+  → 最終 `commit` job が `public/hsp/{exp}/` に成果物を集約して main に push（`[skip ci]`）
+  → CF Pages（git 連携、main 監視）が自動デプロイ
+- `public/hsp/` 配下は CI 産。手動で触る必要なし。.gitignore で除外していたが現在は commit する運用
 
 ### 統計検定
 
