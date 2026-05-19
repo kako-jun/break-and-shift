@@ -13,11 +13,10 @@ on:
 env:
   # OpenHSP v3.7 release (contains hspcmp.exe, common/, hsp3dish.js runtime)
   HSP_RELEASE_URL: https://github.com/onitama/OpenHSP/releases/download/v3.7/hsp37en.zip
-  # Emscripten version. 3.1.43 以降は FS_createDataFile/Path/Device が
-  # EXPORTED_RUNTIME_METHODS から外れた。OpenHSP v3.7 の makefile.emscripten が
-  # これらを明示 export せず file_packager 出力が Module.FS_createDataFile を
-  # 呼ぶ前提なので、デフォルト export の 3.1.42 を使う。
-  EM_VERSION: '3.1.42'
+  # Emscripten version. OpenHSP v3.7 の makefile.emscripten は LINK_FLAGS で
+  # FS_createPath / FS_createPreloadedFile しか export していない。
+  # file_packager は Module.FS_createDataFile も呼ぶので makefile を sed パッチして補う。
+  EM_VERSION: '3.1.74'
   EM_CACHE_FOLDER: 'emsdk-cache'
   # 3rd party JS actions（setup-emsdk 等）を Node 24 で動かして deprecation 警告を消す
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -36,7 +35,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: runtime-out
-          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}
+          key: hsp3dish-runtime-v3.7-em${{ env.EM_VERSION }}-patched-fs2
 
       - name: Checkout OpenHSP
         if: steps.cache-runtime.outputs.cache-hit != 'true'
@@ -45,6 +44,17 @@ jobs:
           repository: onitama/OpenHSP
           ref: v3.7
           path: OpenHSP
+
+      - name: Patch makefile.emscripten to export FS_createDataFile/Device
+        if: steps.cache-runtime.outputs.cache-hit != 'true'
+        working-directory: OpenHSP
+        run: |
+          # 元の LINK_FLAGS_CORE には FS_createPath / FS_createPreloadedFile しか
+          # export されていない。file_packager 出力が Module.FS_createDataFile を
+          # 呼ぶので追加する。
+          sed -i "s/'FS_createPreloadedFile', 'FS_createPath'/'FS_createPreloadedFile', 'FS_createPath', 'FS_createDataFile', 'FS_createDevice'/g" makefile.emscripten
+          echo "=== Patched LINK_FLAGS_CORE ==="
+          grep -A1 "LINK_FLAGS_CORE =" makefile.emscripten | head -5
 
       - name: Setup Emscripten
         if: steps.cache-runtime.outputs.cache-hit != 'true'
