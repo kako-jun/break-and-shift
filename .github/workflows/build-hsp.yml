@@ -13,8 +13,11 @@ on:
 env:
   # OpenHSP v3.7 release (contains hspcmp.exe, common/, hsp3dish.js runtime)
   HSP_RELEASE_URL: https://github.com/onitama/OpenHSP/releases/download/v3.7/hsp37en.zip
-  # Emscripten version (needed for file_packager.py to create .data bundles)
-  EM_VERSION: '3.1.74'
+  # Emscripten version. 3.1.43 以降は FS_createDataFile/Path/Device が
+  # EXPORTED_RUNTIME_METHODS から外れた。OpenHSP v3.7 の makefile.emscripten が
+  # これらを明示 export せず file_packager 出力が Module.FS_createDataFile を
+  # 呼ぶ前提なので、デフォルト export の 3.1.42 を使う。
+  EM_VERSION: '3.1.42'
   EM_CACHE_FOLDER: 'emsdk-cache'
   # 3rd party JS actions（setup-emsdk 等）を Node 24 で動かして deprecation 警告を消す
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
